@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Candidate Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    </head>
+<body>
+
+<div class="container-wide">
+    <div class="page-header dashboard-header">
+        <h1>Candidate Dashboard</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="dashboard-nav">
+        <button class="tab-button active" onclick="switchTab(event, 'find-jobs')">🔍 Find Jobs</button>
+        <button class="tab-button" onclick="switchTab(event, 'my-applications')">📋 My Applications</button>
+        <button class="tab-button" onclick="switchTab(event, 'my-resume')">📄 My Resume</button>
+    </div>
+
+    <!-- Tab 1: Find Jobs -->
+    <div id="find-jobs" class="tab-content active">
+        <h2>Find Jobs</h2>
+        
+        <!-- Search & Filter Section -->
+        <div class="search-filter">
+            <input type="text" id="searchKeyword" placeholder="Search by job title, skill...">
+            <input type="text" id="filterLocation" placeholder="Filter by location...">
+            <input type="number" id="filterMinSalary" placeholder="Min Salary">
+            <input type="number" id="filterMaxSalary" placeholder="Max Salary">
+            <button onclick="searchAndFilter()">🔍 Search</button>
+            <button onclick="loadAllJobs()">Reset</button>
+        </div>
+
+        <div id="jobsList"></div>
+    </div>
+
+    <!-- Tab 2: My Applications -->
+    <div id="my-applications" class="tab-content">
+        <h2>My Applications</h2>
+        <button onclick="loadMyApplications()" class="btn-secondary">🔄 Refresh</button>
+        <div id="applicationsList"></div>
+    </div>
+
+    <!-- Tab 3: My Resume -->
+    <div id="my-resume" class="tab-content">
+        <h2>My Resume</h2>
+        
+        <div class="section-block">
+            <h3>Upload Resume</h3>
+            <input type="file" id="resumeFile" accept=".pdf,.doc,.docx" class="file-input">
+            <button onclick="uploadResume()" class="btn-secondary">📤 Upload</button>
+        </div>
+
+        <h3>My Resumes</h3>
+        <div id="resumesList"></div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+<script>
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        const email = sessionStorage.getItem('email');
+        const role = sessionStorage.getItem('role');
+
+        if (!email || role !== 'CANDIDATE') {
+            alert('Please login as a candidate');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        loadAllJobs();
+        loadMyApplications();
+        loadMyResumes();
+    });
+
+    function switchTab(event, tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab
+        document.getElementById(tabName).classList.add('active');
+
+        // Add active class to clicked button
+        event.target.classList.add('active');
+    }
+
+    function loadAllJobs() {
+        fetch('http://localhost:8080/jobs')
+        .then(res => res.json())
+        .then(data => displayJobs(data))
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('jobsList').innerHTML = '<p style="color: red;">Error loading jobs.</p>';
+        });
+    }
+
+    function searchAndFilter() {
+        const keyword = document.getElementById('searchKeyword').value;
+        const location = document.getElementById('filterLocation').value;
+        const minSalary = document.getElementById('filterMinSalary').value;
+        const maxSalary = document.getElementById('filterMaxSalary').value;
+
+        let url = 'http://localhost:8080/search?';
+        if (keyword) url += `keyword=${encodeURIComponent(keyword)}&`;
+        if (location) url += `location=${encodeURIComponent(location)}&`;
+        if (minSalary) url += `minSalary=${minSalary}&`;
+        if (maxSalary) url += `maxSalary=${maxSalary}&`;
+
+        url = url.slice(0, -1); // Remove trailing &
+
+        fetch(url)
+        .then(res => res.json())
+        .then(data => displayJobs(data))
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('jobsList').innerHTML = '<p style="color: red;">Error searching jobs.</p>';
+        });
+    }
+
+    function displayJobs(jobs) {
+        let output = '';
+
+        if (jobs.length === 0) {
+            output = '<p style="text-align: center; color: #999;">No jobs found matching your criteria.</p>';
+        } else {
+            jobs.forEach(job => {
+                output += `
+                    <div class="card">
+                        <h3>${job.title}</h3>
+                        <p><span class="card-label">Company:</span> ${job.company}</p>
+                        <p><span class="card-label">Location:</span> ${job.location}</p>
+                        <p><span class="card-label">Salary:</span> $${parseFloat(job.salary).toLocaleString()}</p>
+                        <p><span class="card-label">Description:</span> ${job.description.substring(0, 150)}...</p>
+                        <button class="btn-secondary" onclick="applyJobFromDashboard(${job.id}, '${sessionStorage.getItem('email')}')">Apply Now</button>
+                    </div>
+                `;
+            });
+        }
+
+        document.getElementById('jobsList').innerHTML = output;
+    }
+
+    function applyJobFromDashboard(jobId, candidateEmail) {
+        fetch('http://localhost:8080/apply', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `jobId=${jobId}&email=${encodeURIComponent(candidateEmail)}`
+        })
+        .then(res => res.text())
+        .then(data => {
+            if (data === 'Applied Successfully') {
+                alert('Applied successfully!');
+                loadMyApplications();
+            } else {
+                alert('Failed to apply. You may have already applied for this job.');
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+    }
+
+    function loadMyApplications() {
+        const email = sessionStorage.getItem('email');
+
+        fetch(`http://localhost:8080/my-applications?email=${encodeURIComponent(email)}`)
+        .then(res => res.json())
+        .then(data => {
+            let output = '';
+
+            if (data.length === 0) {
+                output = '<p style="text-align: center; color: #999;">You haven\'t applied for any jobs yet.</p>';
+            } else {
+                data.forEach(app => {
+                    let statusClass = 'status-pending';
+                    if (app.status === 'ACCEPTED') statusClass = 'status-accepted';
+                    else if (app.status === 'REJECTED') statusClass = 'status-rejected';
+
+                    output += `
+                        <div class="application-item">
+                            <h3>${app.job}</h3>
+                            <p><span class="card-label">Company:</span> ${app.company}</p>
+                            <p><span class="card-label">Applied:</span> ${new Date(app.appliedAt).toLocaleDateString()}</p>
+                            <span class="status-badge ${statusClass}">${app.status}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('applicationsList').innerHTML = output;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('applicationsList').innerHTML = '<p style="color: red;">Error loading applications.</p>';
+        });
+    }
+
+    function loadMyResumes() {
+        const email = sessionStorage.getItem('email');
+
+        fetch(`http://localhost:8080/resumes?email=${encodeURIComponent(email)}`)
+        .then(res => res.json())
+        .then(data => {
+            let output = '';
+
+            if (data.length === 0) {
+                output = '<p style="text-align: center; color: #999;">No resumes uploaded yet.</p>';
+            } else {
+                data.forEach(resume => {
+                    const primaryBadge = resume.isPrimary ? '<span class="primary-badge">PRIMARY</span>' : '';
+                    output += `
+                        <div class="resume-item">
+                            <div class="resume-info">
+                                <h3>${resume.fileName} ${primaryBadge}</h3>
+                                <p>Size: ${(resume.fileSize / 1024).toFixed(2)} KB | Uploaded: ${new Date(resume.uploadedAt).toLocaleDateString()}</p>
+                            </div>
+                            <div class="resume-buttons">
+                                <button onclick="downloadResume(${resume.id})">Download</button>
+                                ${!resume.isPrimary ? `<button onclick="setPrimaryResume(${resume.id})">Set as Primary</button>` : ''}
+                                <button onclick="deleteResumeFile(${resume.id})">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('resumesList').innerHTML = output;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('resumesList').innerHTML = '<p style="color: red;">Error loading resumes.</p>';
+        });
+    }
+
+    function uploadResume() {
+        const fileInput = document.getElementById('resumeFile');
+        const file = fileInput.files[0];
+        const email = sessionStorage.getItem('email');
+
+        if (!file) {
+            alert('Please select a file');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('email', email);
+        formData.append('file', file);
+
+        fetch('http://localhost:8080/upload-resume', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.text())
+        .then(data => {
+            if (data.includes('successfully')) {
+                alert('Resume uploaded successfully!');
+                fileInput.value = '';
+                loadMyResumes();
+            } else {
+                alert('Failed to upload resume');
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+    }
+
+    function downloadResume(resumeId) {
+        window.location.href = `http://localhost:8080/download-resume?id=${resumeId}`;
+    }
+
+    function setPrimaryResume(resumeId) {
+        const email = sessionStorage.getItem('email');
+
+        fetch('http://localhost:8080/set-primary-resume', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
+        })
+        .then(res => res.text())
+        .then(data => {
+            if (data.includes('set')) {
+                alert('Primary resume set successfully!');
+                loadMyResumes();
+            } else {
+                alert('Failed to set primary resume');
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+    }
+
+    function deleteResumeFile(resumeId) {
+        if (confirm('Are you sure you want to delete this resume?')) {
+            alert('Delete feature coming soon');
+        }
+    }
+
+    function logout() {
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+    }
+</script>
+
+</body>
+</html>

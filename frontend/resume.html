@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Resume</title>
+    <link rel="stylesheet" href="style.css">
+    </head>
+<body>
+
+<div class="container">
+    <h2>My Resume</h2>
+
+    <div class="upload-box" id="uploadBox">
+        <div class="upload-icon">📄</div>
+        <p><strong>Click to upload or drag & drop your resume</strong></p>
+        <p class="text-muted small-text">PDF files up to 5MB</p>
+        <input type="file" id="fileInput" class="file-input" accept=".pdf">
+    </div>
+
+    <div class="progress-bar" id="progressBar" style="display: none;">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <div id="message" style="display: none;"></div>
+
+    <div class="file-list" id="fileList">
+        <h3>Your Resumes</h3>
+        <button onclick="loadResumes()" class="btn-secondary">🔄 Load Resumes</button>
+        <div id="resumeList" class="resume-list"></div>
+    </div>
+
+    <div class="section-block">
+        <a href="jobs.html" class="nav-button">← Back to Jobs</a>
+    </div>
+</div>
+
+<script>
+    const uploadBox = document.getElementById('uploadBox');
+    const fileInput = document.getElementById('fileInput');
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const message = document.getElementById('message');
+
+    // Click to upload
+    uploadBox.addEventListener('click', () => fileInput.click());
+
+    // Drag and drop
+    uploadBox.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadBox.classList.add('dragover');
+    });
+
+    uploadBox.addEventListener('dragleave', () => {
+        uploadBox.classList.remove('dragover');
+    });
+
+    uploadBox.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadBox.classList.remove('dragover');
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            fileInput.files = files;
+            uploadResume();
+        }
+    });
+
+    // File input change
+    fileInput.addEventListener('change', uploadResume);
+
+    function uploadResume() {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        // Validation
+        if (!file.name.endsWith('.pdf')) {
+            showMessage('Please upload a PDF file', 'error');
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) { // 5MB
+            showMessage('File size must be less than 5MB', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('email', sessionStorage.getItem('email'));
+        formData.append('file', file);
+
+        progressBar.style.display = 'block';
+        progressFill.style.width = '0%';
+
+        fetch('http://localhost:8080/upload-resume', {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.text())
+        .then(data => {
+            progressFill.style.width = '100%';
+            setTimeout(() => {
+                progressBar.style.display = 'none';
+                showMessage('Resume uploaded successfully!', 'success');
+                fileInput.value = '';
+                loadResumes();
+            }, 500);
+        })
+        .catch(error => {
+            progressBar.style.display = 'none';
+            showMessage('Error uploading resume: ' + error.message, 'error');
+        });
+    }
+
+    function loadResumes() {
+        const email = sessionStorage.getItem('email');
+        if (!email) {
+            showMessage('Please login first', 'error');
+            return;
+        }
+
+        fetch('http://localhost:8080/resumes?email=' + email)
+        .then(res => res.json())
+        .then(data => {
+            let html = '';
+            if (data.length === 0) {
+                html = '<p style="color: #999;">No resumes uploaded yet.</p>';
+            } else {
+                data.forEach(resume => {
+                    html += `
+                        <div class="file-item">
+                            <div class="file-info">
+                                <div class="file-name">📄 ${resume.fileName}</div>
+                                <div class="file-size">Size: ${(resume.fileSize / 1024).toFixed(2)} KB | Uploaded: ${new Date(resume.uploadedAt).toLocaleDateString()}</div>
+                            </div>
+                            <div class="file-actions">
+                                <button class="btn-secondary" onclick="downloadResume('${resume.id}')">Download</button>
+                                ${resume.isPrimary ? '<span style="color: #667eea; font-weight: 600;">✓ Primary</span>' : '<button class="btn-secondary" onclick="setAsDefault('${resume.id}')">Set as Default</button>'}
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('resumeList').innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading resumes:', error);
+            document.getElementById('resumeList').innerHTML = '<p style="color: red;">Error loading resumes</p>';
+        });
+    }
+
+    function setAsDefault(resumeId) {
+        fetch('http://localhost:8080/set-primary-resume', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'resumeId=' + resumeId + '&email=' + sessionStorage.getItem('email')
+        })
+        .then(res => res.text())
+        .then(data => {
+            showMessage('Resume set as primary', 'success');
+            loadResumes();
+        })
+        .catch(error => showMessage('Error: ' + error.message, 'error'));
+    }
+
+    function downloadResume(resumeId) {
+        window.open('http://localhost:8080/download-resume?id=' + resumeId, '_blank');
+    }
+
+    function showMessage(text, type) {
+        message.textContent = text;
+        message.className = 'alert alert-' + (type === 'error' ? 'error' : 'success');
+        message.style.display = 'block';
+        setTimeout(() => {
+            message.style.display = 'none';
+        }, 4000);
+    }
+
+    // Load resumes on page load
+    window.addEventListener('load', () => {
+        if (sessionStorage.getItem('email')) {
+            loadResumes();
+        }
+    });
+</script>
+
+</body>
+</html>

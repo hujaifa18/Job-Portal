@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Post Job</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+    <h2>Post a New Job</h2>
+
+    <div class="form-group">
+        <label for="title">Job Title</label>
+        <input id="title" type="text" placeholder="e.g., Senior Developer">
+    </div>
+
+    <div class="form-group">
+        <label for="description">Job Description</label>
+        <textarea id="description" placeholder="Describe the job responsibilities and requirements"></textarea>
+    </div>
+
+    <div class="form-row">
+        <div class="form-group">
+            <label for="salary">Salary (Annual)</label>
+            <input id="salary" type="number" placeholder="e.g., 60000">
+        </div>
+
+        <div class="form-group">
+            <label for="location">Location</label>
+            <input id="location" type="text" placeholder="e.g., New York, NY">
+        </div>
+    </div>
+
+    <div class="form-group">
+        <label for="company">Company Name</label>
+        <input id="company" type="text" placeholder="Your company name">
+    </div>
+
+    <div class="form-group">
+        <label for="email">Recruiter Email</label>
+        <input id="email" type="email" placeholder="Your email address">
+    </div>
+
+    <button onclick="postJob()">Post Job</button>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>

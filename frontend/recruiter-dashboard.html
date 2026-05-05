@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recruiter Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    </head>
+<body>
+
+<div class="container-wide">
+    <div class="page-header dashboard-header">
+        <h1>Recruiter Dashboard</h1>
+        <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <!-- Statistics -->
+    <div class="stats">
+        <div class="stat-card">
+            <h3>Total Jobs Posted</h3>
+            <div class="number" id="totalJobs">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>Total Applicants</h3>
+            <div class="number" id="totalApplicants">0</div>
+        </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="dashboard-nav">
+        <button class="tab-button active" onclick="switchTab(event, 'posted-jobs')">📋 Posted Jobs</button>
+        <button class="tab-button" onclick="switchTab(event, 'post-job')">➕ Post New Job</button>
+        <button class="tab-button" onclick="switchTab(event, 'applicants')">👥 Applicants</button>
+    </div>
+
+    <!-- Tab 1: Posted Jobs -->
+    <div id="posted-jobs" class="tab-content active">
+        <h2>Your Posted Jobs</h2>
+        <button onclick="loadRecruiterJobs()" class="btn-secondary">🔄 Refresh</button>
+        <div id="jobsList"></div>
+    </div>
+
+    <!-- Tab 2: Post New Job -->
+    <div id="post-job" class="tab-content">
+        <h2>Post a New Job</h2>
+        <div class="dashboard-form">
+            <div class="form-group">
+                <label for="jobTitle">Job Title</label>
+                <input id="jobTitle" type="text" placeholder="e.g., Senior Developer" required>
+            </div>
+
+            <div class="form-group">
+                <label for="jobDescription">Job Description</label>
+                <textarea id="jobDescription" placeholder="Describe the job responsibilities and requirements" required></textarea>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="jobSalary">Salary (Annual)</label>
+                    <input id="jobSalary" type="number" placeholder="e.g., 60000" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="jobLocation">Location</label>
+                    <input id="jobLocation" type="text" placeholder="e.g., New York, NY" required>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="jobCompany">Company Name</label>
+                <input id="jobCompany" type="text" placeholder="Your company name" required>
+            </div>
+
+            <button onclick="postJobFromDashboard()">Post Job</button>
+        </div>
+    </div>
+
+    <!-- Tab 3: Applicants -->
+    <div id="applicants" class="tab-content">
+        <h2>Job Applicants</h2>
+        <button onclick="loadApplicantsForRecruiter()" class="btn-secondary">🔄 Refresh</button>
+        <div id="applicantsList"></div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+<script>
+    // Initialize dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        const email = sessionStorage.getItem('email');
+        const role = sessionStorage.getItem('role');
+
+        if (!email || role !== 'RECRUITER') {
+            alert('Please login as a recruiter');
+            window.location.href = 'login.html';
+            return;
+        }
+
+        loadRecruiterJobs();
+        loadApplicantsForRecruiter();
+    });
+
+    function switchTab(event, tabName) {
+        // Hide all tabs
+        document.querySelectorAll('.tab-content').forEach(tab => {
+            tab.classList.remove('active');
+        });
+
+        // Remove active class from all buttons
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Show selected tab
+        document.getElementById(tabName).classList.add('active');
+
+        // Add active class to clicked button
+        event.target.classList.add('active');
+    }
+
+    function loadRecruiterJobs() {
+        const email = sessionStorage.getItem('email');
+
+        fetch(`http://localhost:8080/recruiter-jobs?email=${encodeURIComponent(email)}`)
+        .then(res => res.json())
+        .then(data => {
+            let output = '';
+
+            if (data.length === 0) {
+                output = '<p style="text-align: center; color: #999;">No jobs posted yet.</p>';
+            } else {
+                data.forEach(job => {
+                    output += `
+                        <div class="job-item">
+                            <h3>${job.title}</h3>
+                            <p><span class="card-label">Company:</span> ${job.company}</p>
+                            <p><span class="card-label">Location:</span> ${job.location}</p>
+                            <p><span class="card-label">Salary:</span> $${parseFloat(job.salary).toLocaleString()}</p>
+                            <p><span class="card-label">Description:</span> ${job.description.substring(0, 100)}...</p>
+                            <div class="job-item-footer">
+                                <button onclick="editJob(${job.id})">Edit</button>
+                                <button onclick="viewApplicants(${job.id})">View Applicants</button>
+                                <button onclick="deleteJob(${job.id})">Delete</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('jobsList').innerHTML = output;
+            document.getElementById('totalJobs').textContent = data.length;
+        })
+        .catch(error => {
+            console.error('Error loading jobs:', error);
+            document.getElementById('jobsList').innerHTML = '<p style="color: red;">Error loading jobs. Please try again.</p>';
+        });
+    }
+
+    function loadApplicantsForRecruiter() {
+        const email = sessionStorage.getItem('email');
+
+        fetch(`http://localhost:8080/applicants`)
+        .then(res => res.json())
+        .then(data => {
+            // Filter applicants for this recruiter's jobs
+            let output = '';
+
+            if (data.length === 0) {
+                output = '<p style="text-align: center; color: #999;">No applicants yet.</p>';
+            } else {
+                data.forEach(app => {
+                    output += `
+                        <div class="card">
+                            <p><span class="card-label">Candidate:</span> ${app.email}</p>
+                            <p><span class="card-label">Position:</span> ${app.job}</p>
+                            <p><span class="card-label">Company:</span> ${app.company}</p>
+                            <div style="margin-top: 15px;">
+                                <button onclick="acceptApplicant('${app.email}')" class="btn-accept">Accept</button>
+                                <button onclick="rejectApplicant('${app.email}')" class="btn-reject">Reject</button>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+
+            document.getElementById('applicantsList').innerHTML = output;
+            document.getElementById('totalApplicants').textContent = data.length;
+        })
+        .catch(error => {
+            console.error('Error loading applicants:', error);
+            document.getElementById('applicantsList').innerHTML = '<p style="color: red;">Error loading applicants. Please try again.</p>';
+        });
+    }
+
+    function postJobFromDashboard() {
+        const title = document.getElementById('jobTitle').value.trim();
+        const description = document.getElementById('jobDescription').value.trim();
+        const salary = document.getElementById('jobSalary').value.trim();
+        const location = document.getElementById('jobLocation').value.trim();
+        const company = document.getElementById('jobCompany').value.trim();
+        const email = sessionStorage.getItem('email');
+
+        if (!title || !description || !salary || !location || !company) {
+            alert('Please fill in all fields');
+            return;
+        }
+
+        fetch("http://localhost:8080/postjob", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/x-www-form-urlencoded"
+            },
+            body: `title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&salary=${salary}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&email=${encodeURIComponent(email)}`
+        })
+        .then(res => res.text())
+        .then(data => {
+            if (data === 'Job Posted') {
+                alert('Job posted successfully!');
+                document.getElementById('jobTitle').value = '';
+                document.getElementById('jobDescription').value = '';
+                document.getElementById('jobSalary').value = '';
+                document.getElementById('jobLocation').value = '';
+                document.getElementById('jobCompany').value = '';
+                loadRecruiterJobs();
+                switchTab('posted-jobs');
+            } else {
+                alert('Failed to post job');
+            }
+        });
+    }
+
+    function editJob(jobId) {
+        alert('Edit job #' + jobId + ' (Feature coming soon)');
+    }
+
+    function viewApplicants(jobId) {
+        alert('View applicants for job #' + jobId + ' (Feature coming soon)');
+    }
+
+    function deleteJob(jobId) {
+        if (confirm('Are you sure you want to delete this job?')) {
+            alert('Delete job #' + jobId + ' (Feature coming soon)');
+        }
+    }
+
+    function acceptApplicant(email) {
+        alert('Accept applicant ' + email + ' (Feature coming soon)');
+    }
+
+    function rejectApplicant(email) {
+        alert('Reject applicant ' + email + ' (Feature coming soon)');
+    }
+
+    function logout() {
+        sessionStorage.clear();
+        window.location.href = 'login.html';
+    }
+</script>
+
+</body>
+</html>
