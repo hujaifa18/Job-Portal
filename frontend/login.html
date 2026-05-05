@@ -1,34 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Portal Login</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — JobPortal</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<nav class="navbar">
+  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
+  <div class="navbar-links">
+    <a href="index.html">Home</a>
+    <a href="register.html" class="btn-nav-cta">Sign Up</a>
+  </div>
+</nav>
+
 <div class="container">
-    <h2>Login to Your Account</h2>
+  <div class="section-heading">
+    <h2>Welcome back 👋</h2>
+    <p class="text-muted small-text">Login to access your dashboard</p>
+  </div>
 
-    <div class="form-group">
-        <label for="email">Email Address</label>
-        <input type="email" id="email" placeholder="Enter your email">
-    </div>
+  <div class="form-group">
+    <label for="email">Email Address</label>
+    <input type="email" id="email" placeholder="you@example.com">
+  </div>
 
-    <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" placeholder="Enter your password">
-    </div>
+  <div class="form-group">
+    <label for="password">Password</label>
+    <input type="password" id="password" placeholder="Enter your password">
+  </div>
 
-    <button onclick="login()">Login</button>
+  <button onclick="login()">🔑 Login to Account</button>
 
-    <div class="text-center mt-20">
-        <p>Don't have an account? <a href="register.html" class="link-secondary">Register here</a></p>
-    </div>
+  <div class="text-center mt-20">
+    <p class="text-muted small-text">Don't have an account? <a href="register.html" class="link-secondary">Register here</a></p>
+  </div>
 </div>
 
 <script src="script.js"></script>
-
 </body>
 </html>

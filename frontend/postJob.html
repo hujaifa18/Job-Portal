@@ -1,52 +1,62 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Post Job</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post a Job — JobPortal</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<nav class="navbar">
+  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
+  <div class="navbar-links">
+    <a href="index.html">Home</a>
+    <a href="jobs.html">Browse Jobs</a>
+    <a href="login.html" class="btn-nav-cta">Login</a>
+  </div>
+</nav>
+
 <div class="container">
-    <h2>Post a New Job</h2>
+  <div class="section-heading">
+    <h2>✏️ Post a New Job</h2>
+    <p class="text-muted small-text">Fill in the details below to publish your job listing</p>
+  </div>
 
+  <div class="form-group">
+    <label for="title">Job Title</label>
+    <input id="title" type="text" placeholder="e.g., Senior React Developer">
+  </div>
+
+  <div class="form-group">
+    <label for="description">Job Description</label>
+    <textarea id="description" placeholder="Describe responsibilities, requirements, and benefits..."></textarea>
+  </div>
+
+  <div class="form-row">
     <div class="form-group">
-        <label for="title">Job Title</label>
-        <input id="title" type="text" placeholder="e.g., Senior Developer">
+      <label for="salary">Annual Salary ($)</label>
+      <input id="salary" type="number" placeholder="e.g., 80000">
     </div>
-
     <div class="form-group">
-        <label for="description">Job Description</label>
-        <textarea id="description" placeholder="Describe the job responsibilities and requirements"></textarea>
+      <label for="location">Location</label>
+      <input id="location" type="text" placeholder="e.g., New York, NY">
     </div>
+  </div>
 
-    <div class="form-row">
-        <div class="form-group">
-            <label for="salary">Salary (Annual)</label>
-            <input id="salary" type="number" placeholder="e.g., 60000">
-        </div>
+  <div class="form-group">
+    <label for="company">Company Name</label>
+    <input id="company" type="text" placeholder="Your company name">
+  </div>
 
-        <div class="form-group">
-            <label for="location">Location</label>
-            <input id="location" type="text" placeholder="e.g., New York, NY">
-        </div>
-    </div>
+  <div class="form-group">
+    <label for="email">Recruiter Email</label>
+    <input id="email" type="email" placeholder="recruiter@company.com">
+  </div>
 
-    <div class="form-group">
-        <label for="company">Company Name</label>
-        <input id="company" type="text" placeholder="Your company name">
-    </div>
-
-    <div class="form-group">
-        <label for="email">Recruiter Email</label>
-        <input id="email" type="email" placeholder="Your email address">
-    </div>
-
-    <button onclick="postJob()">Post Job</button>
+  <button onclick="postJob()">🚀 Post Job</button>
 </div>
 
 <script src="script.js"></script>
-
 </body>
 </html>

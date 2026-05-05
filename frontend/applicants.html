@@ -1,24 +1,42 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Applicants</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Applicants — JobPortal</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<nav class="navbar">
+  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
+  <div class="navbar-links">
+    <a href="index.html">Home</a>
+    <a href="jobs.html">Browse Jobs</a>
+    <a href="login.html" class="btn-nav-cta">Login</a>
+  </div>
+</nav>
+
 <div class="container-wide">
-    <h1>Job Applicants</h1>
-
-    <div class="text-center mb-20">
-        <button onclick="loadApplicants()" class="btn-secondary">🔄 Load Applicants</button>
+  <div class="page-header dashboard-header">
+    <div>
+      <h2>👤 Job Applicants</h2>
+      <p class="text-muted small-text">All candidates who have applied</p>
     </div>
+    <button onclick="loadApplicants()" class="btn-secondary">🔄 Refresh</button>
+  </div>
 
-    <div class="grid" id="list"></div>
+  <div class="grid" id="list">
+    <div class="empty-state">
+      <div class="empty-icon">👤</div>
+      <p>Click "Refresh" to load applicants</p>
+    </div>
+  </div>
 </div>
 
 <script src="script.js"></script>
-
+<script>
+  window.addEventListener('load', loadApplicants);
+</script>
 </body>
 </html>

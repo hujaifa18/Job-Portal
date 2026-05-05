@@ -1,233 +1,199 @@
+/* ============================================================
+   JobPortal — script.js
+   All original features preserved. Bugs fixed.
+   ============================================================ */
+
+/* ── Register ── */
 function register() {
+  const name     = document.getElementById('name').value.trim();
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value.trim();
+  const role     = document.getElementById('role').value;
 
-    let name = document.getElementById("name").value.trim();
-    let email = document.getElementById("email").value.trim();
-    let password = document.getElementById("password").value.trim();
-    let role = document.getElementById("role").value;
+  if (!name || !email || !password || !role) {
+    alert('Please fill in all fields.'); return;
+  }
+  if (password.length < 6) {
+    alert('Password must be at least 6 characters.'); return;
+  }
+  if (!validateEmail(email)) {
+    alert('Please enter a valid email address.'); return;
+  }
 
-    // Validation
-    if (!name || !email || !password || !role) {
-        alert("Please fill in all fields");
-        return;
+  fetch('http://localhost:8080/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&role=${role}`
+  })
+  .then(res => res.text())
+  .then(data => {
+    if (data === 'Registered Successfully') {
+      alert('✅ Registration successful! Please login now.');
+      window.location.href = 'login.html';
+    } else {
+      alert('❌ Registration failed. Email may already exist.');
     }
-
-    if (password.length < 6) {
-        alert("Password must be at least 6 characters long");
-        return;
-    }
-
-    if (!validateEmail(email)) {
-        alert("Please enter a valid email address");
-        return;
-    }
-
-    fetch("http://localhost:8080/register", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: `name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&role=${role}`
-    })
-    .then(res => res.text())
-    .then(data => {
-        if (data === 'Registered Successfully') {
-            alert("Registration successful! Please login now.");
-            window.location.href = 'login.html';
-        } else {
-            alert("Registration failed. Email may already exist.");
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Registration failed. Please try again.');
-    });
+  })
+  .catch(() => alert('Registration failed. Please try again.'));
 }
 
 function validateEmail(email) {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
+
+/* ── Login ── */
 function login() {
+  const email    = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value.trim();
 
-    let email = document.getElementById("email").value;
-    let password = document.getElementById("password").value;
+  if (!email || !password) {
+    alert('Please fill in all fields.'); return;
+  }
 
-    if (!email || !password) {
-        alert("Please fill in all fields");
-        return;
+  fetch('http://localhost:8080/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
+  })
+  .then(res => res.text())
+  .then(data => {
+    if (data !== 'Invalid') {
+      sessionStorage.setItem('email', email);
+      sessionStorage.setItem('role', data);
+      alert('✅ Login successful!');
+      if (data === 'RECRUITER') {
+        window.location.href = 'recruiter-dashboard.html';
+      } else if (data === 'CANDIDATE') {
+        window.location.href = 'candidate-dashboard.html';
+      }
+    } else {
+      alert('❌ Invalid email or password.');
     }
-
-    fetch("http://localhost:8080/login", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
-    })
-    .then(res => res.text())
-    .then(data => {
-        if (data !== "Invalid") {
-            sessionStorage.setItem('email', email);
-            sessionStorage.setItem('role', data);
-            alert("Login successful!");
-            
-            // Redirect based on role
-            if (data === 'RECRUITER') {
-                window.location.href = 'recruiter-dashboard.html';
-            } else if (data === 'CANDIDATE') {
-                window.location.href = 'candidate-dashboard.html';
-            }
-        } else {
-            alert("Invalid email or password");
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Login failed. Please try again.');
-    });
+  })
+  .catch(() => alert('Login failed. Please try again.'));
 }
 
+/* ── Apply for Job ── */
 function applyJob(jobId, candidateEmail) {
+  if (!jobId || !candidateEmail) {
+    alert('Please login first to apply for jobs.'); return;
+  }
 
-    if (!jobId || !candidateEmail) {
-        alert("Please login first to apply for jobs");
-        return;
+  fetch('http://localhost:8080/apply', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `jobId=${jobId}&email=${encodeURIComponent(candidateEmail)}`
+  })
+  .then(res => res.text())
+  .then(data => {
+    if (data === 'Applied Successfully') {
+      alert('✅ Applied successfully!');
+    } else if (data === 'Failed') {
+      alert('⚠️ You have already applied for this job.');
+    } else {
+      alert(data);
     }
-
-    fetch("http://localhost:8080/apply", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: `jobId=${jobId}&email=${encodeURIComponent(candidateEmail)}`
-    })
-    .then(res => res.text())
-    .then(data => {
-        if (data === 'Applied Successfully') {
-            alert("Applied successfully!");
-        } else if (data === 'Failed') {
-            alert("You have already applied for this job or an error occurred");
-        } else {
-            alert(data);
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to apply. Please try again.');
-    });
+  })
+  .catch(() => alert('Failed to apply. Please try again.'));
 }
 
+/* ── Post Job (standalone page) ── */
 function postJob() {
+  const title       = document.getElementById('title').value.trim();
+  const description = document.getElementById('description').value.trim();
+  const salary      = document.getElementById('salary').value.trim();
+  const location    = document.getElementById('location').value.trim();
+  const company     = document.getElementById('company').value.trim();
+  const email       = document.getElementById('email').value.trim();
 
-    let title = document.getElementById("title").value.trim();
-    let description = document.getElementById("description").value.trim();
-    let salary = document.getElementById("salary").value.trim();
-    let location = document.getElementById("location").value.trim();
-    let company = document.getElementById("company").value.trim();
-    let email = document.getElementById("email").value.trim();
+  if (!title || !description || !salary || !location || !company || !email) {
+    alert('Please fill in all fields.'); return;
+  }
+  if (isNaN(salary) || Number(salary) <= 0) {
+    alert('Please enter a valid salary.'); return;
+  }
 
-    // Validation
-    if (!title || !description || !salary || !location || !company || !email) {
-        alert("Please fill in all fields");
-        return;
+  fetch('http://localhost:8080/postjob', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&salary=${salary}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&email=${encodeURIComponent(email)}`
+  })
+  .then(res => res.text())
+  .then(data => {
+    if (data === 'Job Posted') {
+      alert('✅ Job posted successfully!');
+      ['title','description','salary','location','company','email'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+    } else {
+      alert('❌ Failed to post job.');
     }
-
-    if (isNaN(salary) || salary <= 0) {
-        alert("Please enter a valid salary");
-        return;
-    }
-
-    fetch("http://localhost:8080/postjob", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: `title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&salary=${salary}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&email=${encodeURIComponent(email)}`
-    })
-    .then(res => res.text())
-    .then(data => {
-        if (data === 'Job Posted') {
-            alert("Job posted successfully!");
-            // Reset form
-            document.getElementById("title").value = '';
-            document.getElementById("description").value = '';
-            document.getElementById("salary").value = '';
-            document.getElementById("location").value = '';
-            document.getElementById("company").value = '';
-            document.getElementById("email").value = '';
-        } else {
-            alert("Failed to post job");
-        }
-    })
-    .catch(error => {
-        console.error('Error:', error);
-        alert('Failed to post job. Please try again.');
-    });
+  })
+  .catch(() => alert('Failed to post job. Please try again.'));
 }
+
+/* ── Load Jobs (jobs.html) ── */
 function loadJobs() {
+  const container = document.getElementById('jobList');
+  if (container) container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading jobs...</p>';
 
-    fetch("http://localhost:8080/jobs")
-    .then(res => res.json())
-    .then(data => {
-
-        let output = "";
-
-        if (data.length === 0) {
-            output = '<p style="text-align: center; color: #999;">No jobs available at the moment.</p>';
-        } else {
-            data.forEach(job => {
-
-                output += `
-                    <div class="card">
-                        <h3>${job.title}</h3>
-                        <p><span class="card-label">Company:</span> ${job.company}</p>
-                        <p><span class="card-label">Location:</span> ${job.location}</p>
-                        <p><span class="card-label">Salary:</span> $${parseFloat(job.salary).toLocaleString()}</p>
-                        <button class="btn-secondary" onclick="applyJob(${job.id}, '${sessionStorage.getItem('email')}')">Apply Now</button>
-                    </div>
-                `;
-            });
-        }
-
-        document.getElementById("jobList").innerHTML = output;
-    })
-    .catch(error => {
-        console.error('Error loading jobs:', error);
-        document.getElementById("jobList").innerHTML = '<p style="color: red;">Error loading jobs. Please try again.</p>';
-    });
+  fetch('http://localhost:8080/jobs')
+  .then(res => res.json())
+  .then(data => {
+    let output = '';
+    if (data.length === 0) {
+      output = `<div class="empty-state"><div class="empty-icon">💼</div><p>No jobs available at the moment.</p></div>`;
+    } else {
+      data.forEach(job => {
+        output += `
+          <div class="card">
+            <h3>${job.title}</h3>
+            <p><span class="card-label">Company</span><br>${job.company}</p>
+            <p><span class="card-label">Location</span><br>${job.location}</p>
+            <div class="salary-chip">💰 $${parseFloat(job.salary).toLocaleString()} / yr</div>
+            <div style="margin-top:16px;">
+              <button onclick="applyJob(${job.id}, '${sessionStorage.getItem('email')}')">Apply Now →</button>
+            </div>
+          </div>`;
+      });
+    }
+    if (container) container.innerHTML = output;
+  })
+  .catch(() => {
+    if (container) container.innerHTML = '<p style="color:#fca5a5;">Error loading jobs. Please try again.</p>';
+  });
 }
+
+/* ── Load Applicants (applicants.html) ── */
 function loadApplicants() {
+  const container = document.getElementById('list');
+  if (container) container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading applicants...</p>';
 
-    fetch("http://localhost:8080/applicants")
-    .then(res => res.json())
-    .then(data => {
-
-        let output = "";
-
-        if (data.length === 0) {
-            output = '<p style="text-align: center; color: #999;">No applicants yet.</p>';
-        } else {
-            data.forEach(a => {
-
-                output += `
-                    <div class="card">
-                        <p><span class="card-label">Candidate:</span> ${a.email}</p>
-                        <p><span class="card-label">Position:</span> ${a.job}</p>
-                        <p><span class="card-label">Company:</span> ${a.company}</p>
-                    </div>
-                `;
-            });
-        }
-
-        document.getElementById("list").innerHTML = output;
-    })
-    .catch(error => {
-        console.error('Error loading applicants:', error);
-        document.getElementById("list").innerHTML = '<p style="color: red;">Error loading applicants. Please try again.</p>';
-    });
+  fetch('http://localhost:8080/applicants')
+  .then(res => res.json())
+  .then(data => {
+    let output = '';
+    if (data.length === 0) {
+      output = `<div class="empty-state"><div class="empty-icon">👤</div><p>No applicants yet.</p></div>`;
+    } else {
+      data.forEach(a => {
+        output += `
+          <div class="card">
+            <p><span class="card-label">Candidate</span><br><strong style="color:var(--text-1);">${a.email}</strong></p>
+            <p><span class="card-label">Position</span><br>${a.job}</p>
+            <p><span class="card-label">Company</span><br>${a.company}</p>
+          </div>`;
+      });
+    }
+    if (container) container.innerHTML = output;
+  })
+  .catch(() => {
+    if (container) container.innerHTML = '<p style="color:#fca5a5;">Error loading applicants. Please try again.</p>';
+  });
 }
 
+/* ── Logout ── */
 function logout() {
-    sessionStorage.clear();
-    window.location.href = "login.html";
+  sessionStorage.clear();
+  window.location.href = 'login.html';
 }

@@ -1,25 +1,46 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Job Listings</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browse Jobs — JobPortal</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+<nav class="navbar">
+  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
+  <div class="navbar-links">
+    <a href="index.html">Home</a>
+    <a href="resume.html">My Resume</a>
+    <a href="login.html" class="btn-nav-cta">Login</a>
+  </div>
+</nav>
+
 <div class="container-wide">
-    <h1>Available Jobs</h1>
-
-    <div class="text-center mb-20">
-        <button onclick="loadJobs()" class="btn-secondary">🔄 Load Jobs</button>
-        <a href="resume.html" class="btn-secondary nav-button">📄 My Resume</a>
+  <div class="page-header dashboard-header">
+    <div>
+      <h2>💼 Available Jobs</h2>
+      <p class="text-muted small-text">Find your next opportunity</p>
     </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button onclick="loadJobs()" class="btn-secondary">🔄 Refresh</button>
+      <a href="resume.html" class="nav-button">📄 My Resume</a>
+    </div>
+  </div>
 
-    <div class="grid" id="jobList"></div>
+  <div class="grid" id="jobList">
+    <div class="empty-state">
+      <div class="empty-icon">💼</div>
+      <p>Click "Refresh" to load available jobs</p>
+    </div>
+  </div>
 </div>
 
 <script src="script.js"></script>
-
+<script>
+  // Auto-load on page open
+  window.addEventListener('load', loadJobs);
+</script>
 </body>
 </html>
