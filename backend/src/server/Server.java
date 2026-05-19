@@ -4,650 +4,866 @@ import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.Filter;
 
-import dao.UserDAO;
-import dao.JobDAO;
 import dao.ApplicationDAO;
+import dao.JobDAO;
 import dao.ResumesDAO;
-
-import service.UserService;
+import dao.UserDAO;
 import service.ApplicationService;
+import service.JobService;
+import service.UserService;
 
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.Executors;
 
 public class Server {
 
+    // ========================= CORS FILTER =========================
     static class CorsFilter extends Filter {
-        @Override
-        public String description() {
-            return "Adds CORS headers";
-        }
 
         @Override
-        public void doFilter(HttpExchange exchange, Chain chain) throws IOException {
-            exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-            exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
-            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
+        public String description() { return "Adds CORS headers"; }
+
+        @Override
+        public void doFilter(HttpExchange ex, Chain chain) throws IOException {
+            ex.getResponseHeaders().add("Access-Control-Allow-Origin",  "*");
+            ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+            ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+            if ("OPTIONS".equalsIgnoreCase(ex.getRequestMethod())) {
+                ex.sendResponseHeaders(204, -1);
                 return;
             }
-            chain.doFilter(exchange);
+            chain.doFilter(ex);
         }
     }
 
+    // ========================= MAIN =========================
     public static void main(String[] args) throws Exception {
 
         HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        // Thread pool so concurrent requests don't block each other
+        server.setExecutor(Executors.newFixedThreadPool(20));
 
-        // ================= REGISTER =================
-        server.createContext("/register", (HttpExchange exchange) -> {
+        // ==================== REGISTER ====================
+        server.createContext("/register", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
 
-            if (exchange.getRequestMethod().equals("POST")) {
+            try {
+                Map<String, String> p = parseBody(ex);
 
-                BufferedReader br = new BufferedReader(
-                        new InputStreamReader(exchange.getRequestBody())
-                );
+                String name     = p.getOrDefault("name", "").trim();
+                String email    = p.getOrDefault("email", "").trim();
+                String password = p.getOrDefault("password", "");
+                String role     = p.getOrDefault("role", "").trim();
 
-                String data = br.readLine();
-                String[] parts = data.split("&");
-
-                String name = URLDecoder.decode(parts[0].split("=")[1], "UTF-8");
-                String email = URLDecoder.decode(parts[1].split("=")[1], "UTF-8");
-                String password = URLDecoder.decode(parts[2].split("=")[1], "UTF-8");
-                String role = URLDecoder.decode(parts[3].split("=")[1], "UTF-8");
-
-                UserService service = new UserService();
-                boolean success = service.register(name, email, password, role);
-
-                String response = success ? "Registered Successfully" : "Failed";
-
-                exchange.sendResponseHeaders(200, response.length());
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
-            }
-        }).getFilters().add(new CorsFilter());
-
-        // ================= LOGIN =================
-        server.createContext("/login", (HttpExchange exchange) -> {
-
-            if (exchange.getRequestMethod().equals("POST")) {
-
-                BufferedReader br = new BufferedReader(
-                        new InputStreamReader(exchange.getRequestBody())
-                );
-
-                String data = br.readLine();
-                String[] parts = data.split("&");
-
-                String email = URLDecoder.decode(parts[0].split("=")[1], "UTF-8");
-                String password = URLDecoder.decode(parts[1].split("=")[1], "UTF-8");
-
-                UserDAO dao = new UserDAO();
-                String role = dao.login(email, password);
-
-                String response = (role != null && !role.isEmpty()) ? role : "Invalid";
-
-                exchange.sendResponseHeaders(200, response.length());
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
-            }
-        }).getFilters().add(new CorsFilter());
-
-        // ================= POST JOB =================
-        server.createContext("/postjob", (HttpExchange exchange) -> {
-
-            if (exchange.getRequestMethod().equals("POST")) {
-
-                BufferedReader br = new BufferedReader(
-                        new InputStreamReader(exchange.getRequestBody())
-                );
-
-                String data = br.readLine();
-                String[] p = data.split("&");
-
-                String title = URLDecoder.decode(p[0].split("=")[1], "UTF-8");
-                String desc = URLDecoder.decode(p[1].split("=")[1], "UTF-8");
-                double salary = Double.parseDouble(URLDecoder.decode(p[2].split("=")[1], "UTF-8"));
-                String location = URLDecoder.decode(p[3].split("=")[1], "UTF-8");
-                String company = URLDecoder.decode(p[4].split("=")[1], "UTF-8");
-                String email = URLDecoder.decode(p[5].split("=")[1], "UTF-8");
-
-                JobDAO dao = new JobDAO();
-                boolean success = dao.postJob(
-                        new model.Job(title, desc, salary, location, company, email)
-                );
-
-                String response = success ? "Job Posted" : "Failed";
-
-                exchange.sendResponseHeaders(200, response.length());
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
-            }
-        }).getFilters().add(new CorsFilter());
-
-        // ================= GET JOBS =================
-        server.createContext("/jobs", (HttpExchange exchange) -> {
-
-            if (exchange.getRequestMethod().equals("GET")) {
-
-                JobDAO dao = new JobDAO();
-                List<Map<String, String>> jobs = dao.getAllJobs();
-
-                StringBuilder json = new StringBuilder();
-                json.append("[");
-
-                for (int i = 0; i < jobs.size(); i++) {
-
-                    Map<String, String> job = jobs.get(i);
-
-                    json.append("{")
-                            .append("\"id\":\"").append(job.get("id")).append("\",")
-                            .append("\"title\":\"").append(job.get("title")).append("\",")
-                            .append("\"company\":\"").append(job.get("company")).append("\",")
-                            .append("\"location\":\"").append(job.get("location")).append("\",")
-                            .append("\"salary\":\"").append(job.get("salary")).append("\"")
-                            .append("}");
-
-                    if (i < jobs.size() - 1) json.append(",");
+                if (name.isEmpty() || email.isEmpty() || password.isEmpty() || role.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"All fields are required\"}");
+                    return;
                 }
 
-                json.append("]");
+                UserService svc = new UserService();
 
-                String response = json.toString();
+                if (new UserDAO().emailExists(email)) {
+                    sendJson(ex, 409, "{\"error\":\"Email already registered\"}");
+                    return;
+                }
 
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, response.length());
+                boolean ok = svc.register(name, email, password, role);
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Registered successfully\"}"
+                        : "{\"error\":\"Registration failed\"}");
 
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
             }
         }).getFilters().add(new CorsFilter());
 
-        // ================= APPLY JOB =================
-        server.createContext("/apply", (HttpExchange exchange) -> {
+        // ==================== LOGIN ====================
+        server.createContext("/login", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
 
-            if (exchange.getRequestMethod().equals("POST")) {
+            try {
+                Map<String, String> p = parseBody(ex);
 
-                BufferedReader br = new BufferedReader(
-                        new InputStreamReader(exchange.getRequestBody())
-                );
+                String email    = p.getOrDefault("email", "").trim();
+                String password = p.getOrDefault("password", "");
 
-                String data = br.readLine();
-                String[] parts = data.split("&");
-
-                int jobId = Integer.parseInt(URLDecoder.decode(parts[0].split("=")[1], "UTF-8"));
-                String email = URLDecoder.decode(parts[1].split("=")[1], "UTF-8");
-
-                ApplicationService service = new ApplicationService();
-                boolean success = service.applyJob(jobId, email);
-
-                String response = success ? "Applied Successfully" : "Failed";
-
-                exchange.sendResponseHeaders(200, response.length());
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
-            }
-        }).getFilters().add(new CorsFilter());
-
-        // ================= GET APPLICANTS =================
-        server.createContext("/applicants", (HttpExchange exchange) -> {
-
-            if (exchange.getRequestMethod().equals("GET")) {
-
-                ApplicationDAO dao = new ApplicationDAO();
-                List<Map<String, String>> list = dao.getAllApplications();
-
-                StringBuilder json = new StringBuilder();
-                json.append("[");
-
-                for (int i = 0; i < list.size(); i++) {
-
-                    Map<String, String> a = list.get(i);
-
-                    json.append("{")
-                            .append("\"email\":\"").append(a.get("email")).append("\",")
-                            .append("\"job\":\"").append(a.get("job")).append("\",")
-                            .append("\"company\":\"").append(a.get("company")).append("\"")
-                            .append("}");
-
-                    if (i < list.size() - 1) json.append(",");
+                if (email.isEmpty() || password.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"Email and password required\"}");
+                    return;
                 }
 
-                json.append("]");
+                String role = new UserDAO().login(email, password);
 
-                String response = json.toString();
-
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, response.length());
-
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
-            }
-        }).getFilters().add(new CorsFilter());
-
-        // ================= UPLOAD RESUME =================
-        server.createContext("/upload-resume", (HttpExchange exchange) -> {
-
-            if (exchange.getRequestMethod().equals("POST")) {
-
-                try {
-                    String contentType = exchange.getRequestHeaders().getFirst("Content-Type");
-                    
-                    if (contentType != null && contentType.contains("multipart/form-data")) {
-                        
-                        // Parse multipart form data
-                        byte[] buffer = new byte[8192];
-                        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-                        InputStream is = exchange.getRequestBody();
-                        int bytesRead;
-                        
-                        while ((bytesRead = is.read(buffer)) != -1) {
-                            baos.write(buffer, 0, bytesRead);
-                        }
-                        
-                        String body = baos.toString();
-                        String boundary = contentType.split("boundary=")[1];
-                        
-                        // Extract email and file from multipart data
-                        String email = extractMultipartField(body, "email", boundary);
-                        byte[] fileData = extractMultipartFile(body, "file", boundary);
-                        String fileName = extractMultipartFileName(body, boundary);
-                        
-                        if (email != null && fileData != null && fileName != null) {
-                            
-                            // Save file to uploads directory
-                            String uploadDir = "uploads/";
-                            new File(uploadDir).mkdirs();
-                            
-                            String filePath = uploadDir + System.currentTimeMillis() + "_" + fileName;
-                            Files.write(Paths.get(filePath), fileData);
-                            
-                            // Save to database
-                            ResumesDAO dao = new ResumesDAO();
-                            boolean success = dao.uploadResume(email, fileName, filePath, fileData.length);
-                            
-                            String response = success ? "Resume uploaded successfully" : "Failed to save resume";
-                            
-                            exchange.sendResponseHeaders(200, response.length());
-                            OutputStream os = exchange.getResponseBody();
-                            os.write(response.getBytes());
-                            os.close();
-                        } else {
-                            exchange.sendResponseHeaders(400, 15);
-                            OutputStream os = exchange.getResponseBody();
-                            os.write("Invalid request".getBytes());
-                            os.close();
-                        }
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    try {
-                        exchange.sendResponseHeaders(500, 21);
-                        OutputStream os = exchange.getResponseBody();
-                        os.write("Error uploading file".getBytes());
-                        os.close();
-                    } catch (Exception e2) {
-                        e2.printStackTrace();
-                    }
-                }
-            }
-        }).getFilters().add(new CorsFilter());
-
-        // ================= GET RESUMES =================
-        server.createContext("/resumes", (HttpExchange exchange) -> {
-
-            if (exchange.getRequestMethod().equals("GET")) {
-
-                String query = exchange.getRequestURI().getQuery();
-                String email = null;
-                
-                if (query != null) {
-                    String[] params = query.split("&");
-                    for (String param : params) {
-                        String[] kv = param.split("=");
-                        if (kv[0].equals("email")) {
-                            email = URLDecoder.decode(kv[1], "UTF-8");
-                        }
-                    }
-                }
-                
-                ResumesDAO dao = new ResumesDAO();
-                List<Map<String, Object>> resumes = dao.getResumesByEmail(email);
-                
-                StringBuilder json = new StringBuilder();
-                json.append("[");
-                
-                for (int i = 0; i < resumes.size(); i++) {
-                    Map<String, Object> r = resumes.get(i);
-                    json.append("{")
-                            .append("\"id\":").append(r.get("id")).append(",")
-                            .append("\"fileName\":\"").append(r.get("fileName")).append("\",")
-                            .append("\"fileSize\":").append(r.get("fileSize")).append(",")
-                            .append("\"uploadedAt\":\"").append(r.get("uploadedAt")).append("\",")
-                            .append("\"isPrimary\":").append(r.get("isPrimary"))
-                            .append("}");
-                    
-                    if (i < resumes.size() - 1) json.append(",");
-                }
-                
-                json.append("]");
-                
-                String response = json.toString();
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, response.length());
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
-            }
-        }).getFilters().add(new CorsFilter());
-
-        // ================= DOWNLOAD RESUME =================
-        server.createContext("/download-resume", (HttpExchange exchange) -> {
-
-            if (exchange.getRequestMethod().equals("GET")) {
-
-                String query = exchange.getRequestURI().getQuery();
-                int resumeId = -1;
-                
-                if (query != null) {
-                    String[] params = query.split("&");
-                    for (String param : params) {
-                        String[] kv = param.split("=");
-                        if (kv[0].equals("id")) {
-                            resumeId = Integer.parseInt(kv[1]);
-                        }
-                    }
-                }
-                
-                ResumesDAO dao = new ResumesDAO();
-                Map<String, Object> resume = dao.getResumeById(resumeId);
-                
-                if (resume != null) {
-                    String filePath = (String) resume.get("filePath");
-                    String fileName = (String) resume.get("fileName");
-                    
-                    try {
-                        byte[] fileData = Files.readAllBytes(Paths.get(filePath));
-                        
-                        exchange.getResponseHeaders().add("Content-Type", "application/pdf");
-                        exchange.getResponseHeaders().add("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
-                        exchange.sendResponseHeaders(200, fileData.length);
-                        
-                        OutputStream os = exchange.getResponseBody();
-                        os.write(fileData);
-                        os.close();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                if (role != null) {
+                    Map<String, String> user = new UserDAO().getUserByEmail(email);
+                    String name = user != null ? escape(user.get("name")) : "";
+                    sendJson(ex, 200, "{\"role\":\"" + role + "\",\"email\":\"" + escape(email) + "\",\"name\":\"" + name + "\"}");
                 } else {
-                    try {
-                        exchange.sendResponseHeaders(404, 9);
-                        OutputStream os = exchange.getResponseBody();
-                        os.write("Not found".getBytes());
-                        os.close();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    sendJson(ex, 401, "{\"error\":\"Invalid email or password\"}");
                 }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
             }
         }).getFilters().add(new CorsFilter());
 
-        // ================= SET PRIMARY RESUME =================
-        server.createContext("/set-primary-resume", (HttpExchange exchange) -> {
+        // ==================== GET PROFILE ====================
+        server.createContext("/profile", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("GET")) { send405(ex); return; }
 
-            if (exchange.getRequestMethod().equals("POST")) {
+            try {
+                String email = getQueryParam(ex, "email");
 
-                BufferedReader br = new BufferedReader(
-                        new InputStreamReader(exchange.getRequestBody())
-                );
+                if (email == null || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"Email required\"}");
+                    return;
+                }
 
-                String data = br.readLine();
-                String[] parts = data.split("&");
+                Map<String, String> user = new UserDAO().getUserByEmail(email);
 
-                int resumeId = Integer.parseInt(parts[0].split("=")[1]);
-                String email = URLDecoder.decode(parts[1].split("=")[1], "UTF-8");
+                if (user == null) {
+                    sendJson(ex, 404, "{\"error\":\"User not found\"}");
+                } else {
+                    sendJson(ex, 200, "{" +
+                            "\"id\":\""    + escape(user.get("id"))    + "\"," +
+                            "\"name\":\""  + escape(user.get("name"))  + "\"," +
+                            "\"email\":\"" + escape(user.get("email")) + "\"," +
+                            "\"role\":\""  + escape(user.get("role"))  + "\"" +
+                            "}");
+                }
 
-                ResumesDAO dao = new ResumesDAO();
-                boolean success = dao.setPrimaryResume(resumeId, email);
-
-                String response = success ? "Primary resume set" : "Failed";
-
-                exchange.sendResponseHeaders(200, response.length());
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
             }
         }).getFilters().add(new CorsFilter());
 
-        // ================= SEARCH & FILTER JOBS =================
-        server.createContext("/search", (HttpExchange exchange) -> {
+        // ==================== UPDATE PROFILE ====================
+        server.createContext("/update-profile", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
 
-            if (exchange.getRequestMethod().equals("GET")) {
+            try {
+                Map<String, String> p = parseBody(ex);
 
-                String query = exchange.getRequestURI().getQuery();
-                String keyword = null;
-                String location = null;
+                String email    = p.getOrDefault("email", "").trim();
+                String name     = p.getOrDefault("name", "").trim();
+                String password = p.getOrDefault("password", ""); // optional
+
+                if (email.isEmpty() || name.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"Email and name required\"}");
+                    return;
+                }
+
+                boolean ok = new UserService().updateProfile(email, name, password.isEmpty() ? null : password);
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Profile updated\"}"
+                        : "{\"error\":\"Update failed\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== POST JOB ====================
+        server.createContext("/postjob", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
+
+            try {
+                Map<String, String> p = parseBody(ex);
+
+                String title    = p.getOrDefault("title", "").trim();
+                String desc     = p.getOrDefault("description", "");
+                String salaryS  = p.getOrDefault("salary", "0");
+                String location = p.getOrDefault("location", "").trim();
+                String company  = p.getOrDefault("company", "").trim();
+                String email    = p.getOrDefault("email", "").trim();
+
+                if (title.isEmpty() || email.isEmpty() || company.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"title, company and email are required\"}");
+                    return;
+                }
+
+                double salary;
+                try { salary = Double.parseDouble(salaryS); } catch (NumberFormatException e) { salary = 0; }
+
+                boolean ok = new JobService().postJob(title, desc, salary, location, company, email);
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Job posted\"}"
+                        : "{\"error\":\"Failed to post job\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== UPDATE JOB ====================
+        server.createContext("/update-job", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
+
+            try {
+                Map<String, String> p = parseBody(ex);
+
+                int    jobId    = intParam(p, "jobId");
+                String title    = p.getOrDefault("title", "").trim();
+                String desc     = p.getOrDefault("description", "");
+                double salary   = doubleParam(p, "salary");
+                String location = p.getOrDefault("location", "");
+                String company  = p.getOrDefault("company", "");
+                String email    = p.getOrDefault("email", "").trim();
+
+                if (jobId <= 0 || title.isEmpty() || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"jobId, title and email are required\"}");
+                    return;
+                }
+
+                boolean ok = new JobService().updateJob(jobId, title, desc, salary, location, company, email);
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Job updated\"}"
+                        : "{\"error\":\"Update failed — job not found or not yours\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== DELETE JOB ====================
+        server.createContext("/delete-job", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
+
+            try {
+                Map<String, String> p = parseBody(ex);
+
+                int    jobId = intParam(p, "jobId");
+                String email = p.getOrDefault("email", "").trim();
+
+                if (jobId <= 0 || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"jobId and email required\"}");
+                    return;
+                }
+
+                boolean ok = new JobService().deleteJob(jobId, email);
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Job deleted\"}"
+                        : "{\"error\":\"Delete failed — job not found or not yours\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== GET ALL JOBS ====================
+        server.createContext("/jobs", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("GET")) { send405(ex); return; }
+
+            try {
+                List<Map<String, String>> jobs = new JobDAO().getAllJobs();
+                sendJson(ex, 200, jobsToJson(jobs));
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== GET SINGLE JOB ====================
+        server.createContext("/job", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("GET")) { send405(ex); return; }
+
+            try {
+                String idStr = getQueryParam(ex, "id");
+
+                if (idStr == null) { sendJson(ex, 400, "{\"error\":\"id required\"}"); return; }
+
+                Map<String, String> job = new JobDAO().getJobById(Integer.parseInt(idStr));
+
+                if (job == null) {
+                    sendJson(ex, 404, "{\"error\":\"Job not found\"}");
+                } else {
+                    sendJson(ex, 200, jobToJson(job));
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== SEARCH + FILTER JOBS ====================
+        server.createContext("/search", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("GET")) { send405(ex); return; }
+
+            try {
+                Map<String, String> q = parseQueryString(ex);
+
+                String keyword  = q.get("keyword");
+                String location = q.get("location");
+
                 Double minSalary = null;
                 Double maxSalary = null;
 
-                if (query != null) {
-                    String[] params = query.split("&");
-                    for (String param : params) {
-                        String[] kv = param.split("=");
-                        if (kv.length == 2) {
-                            String key = kv[0];
-                            String value = URLDecoder.decode(kv[1], "UTF-8");
-
-                            if (key.equals("keyword")) keyword = value;
-                            else if (key.equals("location")) location = value;
-                            else if (key.equals("minSalary") && !value.isEmpty()) minSalary = Double.parseDouble(value);
-                            else if (key.equals("maxSalary") && !value.isEmpty()) maxSalary = Double.parseDouble(value);
-                        }
-                    }
+                if (q.containsKey("minSalary") && !q.get("minSalary").isEmpty()) {
+                    try { minSalary = Double.parseDouble(q.get("minSalary")); } catch (NumberFormatException ignored) {}
+                }
+                if (q.containsKey("maxSalary") && !q.get("maxSalary").isEmpty()) {
+                    try { maxSalary = Double.parseDouble(q.get("maxSalary")); } catch (NumberFormatException ignored) {}
                 }
 
-                JobDAO dao = new JobDAO();
-                List<Map<String, String>> jobs = dao.searchAndFilter(keyword, location, minSalary, maxSalary);
+                List<Map<String, String>> jobs = new JobDAO().searchAndFilter(keyword, location, minSalary, maxSalary);
+                sendJson(ex, 200, jobsToJson(jobs));
 
-                StringBuilder json = new StringBuilder();
-                json.append("[");
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
 
-                for (int i = 0; i < jobs.size(); i++) {
+        // ==================== GET RECRUITER'S JOBS ====================
+        server.createContext("/recruiter-jobs", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("GET")) { send405(ex); return; }
 
-                    Map<String, String> job = jobs.get(i);
+            try {
+                String email = getQueryParam(ex, "email");
 
+                if (email == null || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"email required\"}");
+                    return;
+                }
+
+                List<Map<String, String>> jobs = new JobDAO().getJobsByRecruiter(email);
+                sendJson(ex, 200, jobsToJson(jobs));
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== APPLY FOR JOB ====================
+        server.createContext("/apply", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
+
+            try {
+                Map<String, String> p = parseBody(ex);
+
+                int    jobId = intParam(p, "jobId");
+                String email = p.getOrDefault("email", "").trim();
+
+                if (jobId <= 0 || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"jobId and email required\"}");
+                    return;
+                }
+
+                ApplicationService svc = new ApplicationService();
+
+                if (svc.alreadyApplied(jobId, email)) {
+                    sendJson(ex, 409, "{\"error\":\"Already applied to this job\"}");
+                    return;
+                }
+
+                boolean ok = svc.applyJob(jobId, email);
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Applied successfully\"}"
+                        : "{\"error\":\"Application failed\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== WITHDRAW APPLICATION ====================
+        server.createContext("/withdraw", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
+
+            try {
+                Map<String, String> p = parseBody(ex);
+
+                int    appId = intParam(p, "applicationId");
+                String email = p.getOrDefault("email", "").trim();
+
+                if (appId <= 0 || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"applicationId and email required\"}");
+                    return;
+                }
+
+                boolean ok = new ApplicationService().withdraw(appId, email);
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Application withdrawn\"}"
+                        : "{\"error\":\"Withdraw failed\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== MY APPLICATIONS (candidate) ====================
+        server.createContext("/my-applications", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("GET")) { send405(ex); return; }
+
+            try {
+                String email = getQueryParam(ex, "email");
+
+                if (email == null || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"email required\"}");
+                    return;
+                }
+
+                List<Map<String, String>> apps = new ApplicationDAO().getApplicationsByCandidate(email);
+
+                StringBuilder json = new StringBuilder("[");
+                for (int i = 0; i < apps.size(); i++) {
+                    Map<String, String> a = apps.get(i);
                     json.append("{")
-                            .append("\"id\":\"").append(job.get("id")).append("\",")
-                            .append("\"title\":\"").append(job.get("title")).append("\",")
-                            .append("\"description\":\"").append(job.get("description")).append("\",")
-                            .append("\"company\":\"").append(job.get("company")).append("\",")
-                            .append("\"location\":\"").append(job.get("location")).append("\",")
-                            .append("\"salary\":\"").append(job.get("salary")).append("\"")
-                            .append("}");
-
-                    if (i < jobs.size() - 1) json.append(",");
+                        .append("\"id\":\"").append(escape(a.get("id"))).append("\",")
+                        .append("\"jobId\":\"").append(escape(a.get("jobId"))).append("\",")
+                        .append("\"job\":\"").append(escape(a.get("job"))).append("\",")
+                        .append("\"company\":\"").append(escape(a.get("company"))).append("\",")
+                        .append("\"status\":\"").append(escape(a.get("status"))).append("\",")
+                        .append("\"appliedAt\":\"").append(escape(a.get("appliedAt"))).append("\"")
+                        .append("}");
+                    if (i < apps.size() - 1) json.append(",");
                 }
-
                 json.append("]");
 
-                String response = json.toString();
+                sendJson(ex, 200, json.toString());
 
-                exchange.getResponseHeaders().add("Content-Type", "application/json");
-                exchange.sendResponseHeaders(200, response.length());
-
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes());
-                os.close();
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
             }
         }).getFilters().add(new CorsFilter());
 
-        // ================= GET RECRUITER JOBS =================
-        server.createContext("/recruiter-jobs", (HttpExchange exchange) -> {
+        // ==================== APPLICANTS (recruiter view) ====================
+        server.createContext("/applicants", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("GET")) { send405(ex); return; }
 
-            if (exchange.getRequestMethod().equals("GET")) {
+            try {
+                String recruiterEmail = getQueryParam(ex, "email");
 
-                String query = exchange.getRequestURI().getQuery();
-                String email = null;
-
-                if (query != null) {
-                    String[] params = query.split("&");
-                    for (String param : params) {
-                        String[] kv = param.split("=");
-                        if (kv[0].equals("email")) {
-                            email = URLDecoder.decode(kv[1], "UTF-8");
-                        }
-                    }
+                if (recruiterEmail == null || recruiterEmail.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"Recruiter email required\"}");
+                    return;
                 }
 
-                if (email != null) {
-                    JobDAO dao = new JobDAO();
-                    List<Map<String, String>> jobs = dao.getJobsByRecruiter(email);
+                List<Map<String, String>> apps = new ApplicationDAO().getApplicantsForRecruiter(recruiterEmail);
 
-                    StringBuilder json = new StringBuilder();
-                    json.append("[");
-
-                    for (int i = 0; i < jobs.size(); i++) {
-
-                        Map<String, String> job = jobs.get(i);
-
-                        json.append("{")
-                                .append("\"id\":\"").append(job.get("id")).append("\",")
-                                .append("\"title\":\"").append(job.get("title")).append("\",")
-                                .append("\"description\":\"").append(job.get("description")).append("\",")
-                                .append("\"company\":\"").append(job.get("company")).append("\",")
-                                .append("\"location\":\"").append(job.get("location")).append("\",")
-                                .append("\"salary\":\"").append(job.get("salary")).append("\"")
-                                .append("}");
-
-                        if (i < jobs.size() - 1) json.append(",");
-                    }
-
-                    json.append("]");
-
-                    String response = json.toString();
-
-                    exchange.getResponseHeaders().add("Content-Type", "application/json");
-                    exchange.sendResponseHeaders(200, response.length());
-
-                    OutputStream os = exchange.getResponseBody();
-                    os.write(response.getBytes());
-                    os.close();
-                } else {
-                    exchange.sendResponseHeaders(400, 15);
-                    OutputStream os = exchange.getResponseBody();
-                    os.write("Invalid request".getBytes());
-                    os.close();
+                StringBuilder json = new StringBuilder("[");
+                for (int i = 0; i < apps.size(); i++) {
+                    Map<String, String> a = apps.get(i);
+                    json.append("{")
+                        .append("\"id\":\"").append(escape(a.get("id"))).append("\",")
+                        .append("\"email\":\"").append(escape(a.get("email"))).append("\",")
+                        .append("\"candidateName\":\"").append(escape(a.get("candidateName"))).append("\",")
+                        .append("\"job\":\"").append(escape(a.get("job"))).append("\",")
+                        .append("\"company\":\"").append(escape(a.get("company"))).append("\",")
+                        .append("\"status\":\"").append(escape(a.get("status"))).append("\",")
+                        .append("\"appliedAt\":\"").append(escape(a.get("appliedAt"))).append("\"")
+                        .append("}");
+                    if (i < apps.size() - 1) json.append(",");
                 }
+                json.append("]");
+
+                sendJson(ex, 200, json.toString());
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
             }
         }).getFilters().add(new CorsFilter());
 
-        // ================= GET CANDIDATE APPLICATIONS =================
-        server.createContext("/my-applications", (HttpExchange exchange) -> {
+        // ==================== UPDATE APPLICATION STATUS ====================
+        server.createContext("/update-status", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
 
-            if (exchange.getRequestMethod().equals("GET")) {
+            try {
+                Map<String, String> p = parseBody(ex);
 
-                String query = exchange.getRequestURI().getQuery();
-                String email = null;
+                int    appId         = intParam(p, "applicationId");
+                String status        = p.getOrDefault("status", "").trim();
+                String recruiterEmail = p.getOrDefault("recruiterEmail", "").trim();
 
-                if (query != null) {
-                    String[] params = query.split("&");
-                    for (String param : params) {
-                        String[] kv = param.split("=");
-                        if (kv[0].equals("email")) {
-                            email = URLDecoder.decode(kv[1], "UTF-8");
-                        }
-                    }
+                if (appId <= 0 || status.isEmpty() || recruiterEmail.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"applicationId, status and recruiterEmail required\"}");
+                    return;
                 }
 
-                if (email != null) {
-                    ApplicationDAO dao = new ApplicationDAO();
-                    List<Map<String, String>> applications = dao.getApplicationsByCandidate(email);
+                boolean ok = new ApplicationService().updateStatus(appId, status, recruiterEmail);
+                sendJson(ex, ok ? 200 : 400, ok
+                        ? "{\"message\":\"Status updated\"}"
+                        : "{\"error\":\"Update failed — invalid status or not authorised\"}");
 
-                    StringBuilder json = new StringBuilder();
-                    json.append("[");
-
-                    for (int i = 0; i < applications.size(); i++) {
-
-                        Map<String, String> app = applications.get(i);
-
-                        json.append("{")
-                                .append("\"job\":\"").append(app.get("job")).append("\",")
-                                .append("\"company\":\"").append(app.get("company")).append("\",")
-                                .append("\"status\":\"").append(app.get("status")).append("\",")
-                                .append("\"appliedAt\":\"").append(app.get("appliedAt")).append("\"")
-                                .append("}");
-
-                        if (i < applications.size() - 1) json.append(",");
-                    }
-
-                    json.append("]");
-
-                    String response = json.toString();
-
-                    exchange.getResponseHeaders().add("Content-Type", "application/json");
-                    exchange.sendResponseHeaders(200, response.length());
-
-                    OutputStream os = exchange.getResponseBody();
-                    os.write(response.getBytes());
-                    os.close();
-                } else {
-                    exchange.sendResponseHeaders(400, 15);
-                    OutputStream os = exchange.getResponseBody();
-                    os.write("Invalid request".getBytes());
-                    os.close();
-                }
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
             }
         }).getFilters().add(new CorsFilter());
 
-        // ================= START SERVER =================
+        // ==================== UPLOAD RESUME ====================
+        server.createContext("/upload-resume", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
+
+            try {
+                String contentType = ex.getRequestHeaders().getFirst("Content-Type");
+
+                if (contentType == null || !contentType.contains("multipart/form-data")) {
+                    sendJson(ex, 400, "{\"error\":\"Must be multipart/form-data\"}");
+                    return;
+                }
+
+                String boundary = contentType.split("boundary=")[1].trim();
+
+                // Read raw bytes to avoid corrupting binary PDF data
+                byte[] rawBody = ex.getRequestBody().readAllBytes();
+
+                String email    = extractFieldFromBytes(rawBody, "email", boundary);
+                String fileName = extractFileNameFromBytes(rawBody, boundary);
+                byte[] fileData = extractFileDataFromBytes(rawBody, "file", boundary);
+
+                if (email == null || fileData == null || fileName == null) {
+                    sendJson(ex, 400, "{\"error\":\"email, file and filename are required\"}");
+                    return;
+                }
+
+                // Validate file type — only PDF allowed
+                if (!fileName.toLowerCase().endsWith(".pdf")) {
+                    sendJson(ex, 400, "{\"error\":\"Only PDF files are allowed\"}");
+                    return;
+                }
+
+                // Max 5 MB
+                if (fileData.length > 5 * 1024 * 1024) {
+                    sendJson(ex, 400, "{\"error\":\"File exceeds 5MB limit\"}");
+                    return;
+                }
+
+                String uploadDir = "uploads/";
+                new File(uploadDir).mkdirs();
+
+                String filePath = uploadDir + System.currentTimeMillis() + "_" + fileName;
+                Files.write(Paths.get(filePath), fileData);
+
+                boolean ok = new ResumesDAO().uploadResume(email, fileName, filePath, fileData.length);
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Resume uploaded\"}"
+                        : "{\"error\":\"Failed to save resume\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== GET RESUMES ====================
+        server.createContext("/resumes", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("GET")) { send405(ex); return; }
+
+            try {
+                String email = getQueryParam(ex, "email");
+
+                if (email == null || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"email required\"}");
+                    return;
+                }
+
+                List<Map<String, Object>> resumes = new ResumesDAO().getResumesByEmail(email);
+
+                StringBuilder json = new StringBuilder("[");
+                for (int i = 0; i < resumes.size(); i++) {
+                    Map<String, Object> r = resumes.get(i);
+                    json.append("{")
+                        .append("\"id\":").append(r.get("id")).append(",")
+                        .append("\"fileName\":\"").append(escape(String.valueOf(r.get("fileName")))).append("\",")
+                        .append("\"fileSize\":").append(r.get("fileSize")).append(",")
+                        .append("\"uploadedAt\":\"").append(escape(String.valueOf(r.get("uploadedAt")))).append("\",")
+                        .append("\"isPrimary\":").append(r.get("isPrimary"))
+                        .append("}");
+                    if (i < resumes.size() - 1) json.append(",");
+                }
+                json.append("]");
+
+                sendJson(ex, 200, json.toString());
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== DOWNLOAD RESUME ====================
+        server.createContext("/download-resume", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("GET")) { send405(ex); return; }
+
+            try {
+                String idStr = getQueryParam(ex, "id");
+
+                if (idStr == null) { sendJson(ex, 400, "{\"error\":\"id required\"}"); return; }
+
+                Map<String, Object> resume = new ResumesDAO().getResumeById(Integer.parseInt(idStr));
+
+                if (resume == null) {
+                    sendJson(ex, 404, "{\"error\":\"Resume not found\"}");
+                    return;
+                }
+
+                String filePath = (String) resume.get("filePath");
+                String fileName = (String) resume.get("fileName");
+
+                byte[] fileData = Files.readAllBytes(Paths.get(filePath));
+
+                ex.getResponseHeaders().add("Content-Type", "application/pdf");
+                ex.getResponseHeaders().add("Content-Disposition", "attachment; filename=\"" + fileName + "\"");
+                ex.sendResponseHeaders(200, fileData.length);
+
+                try (OutputStream os = ex.getResponseBody()) {
+                    os.write(fileData);
+                }
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== SET PRIMARY RESUME ====================
+        server.createContext("/set-primary-resume", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
+
+            try {
+                Map<String, String> p = parseBody(ex);
+
+                int    resumeId = intParam(p, "resumeId");
+                String email    = p.getOrDefault("email", "").trim();
+
+                if (resumeId <= 0 || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"resumeId and email required\"}");
+                    return;
+                }
+
+                boolean ok = new ResumesDAO().setPrimaryResume(resumeId, email);
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Primary resume set\"}"
+                        : "{\"error\":\"Failed\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== DELETE RESUME ====================
+        server.createContext("/delete-resume", (HttpExchange ex) -> {
+            if (!ex.getRequestMethod().equals("POST")) { send405(ex); return; }
+
+            try {
+                Map<String, String> p = parseBody(ex);
+
+                int    resumeId = intParam(p, "resumeId");
+                String email    = p.getOrDefault("email", "").trim();
+
+                if (resumeId <= 0 || email.isEmpty()) {
+                    sendJson(ex, 400, "{\"error\":\"resumeId and email required\"}");
+                    return;
+                }
+
+                ResumesDAO dao  = new ResumesDAO();
+                String filePath = dao.getFilePath(resumeId, email);
+
+                boolean ok = dao.deleteResume(resumeId, email);
+
+                if (ok && filePath != null) {
+                    // Best-effort file deletion
+                    try { new File(filePath).delete(); } catch (Exception ignored) {}
+                }
+
+                sendJson(ex, ok ? 200 : 500, ok
+                        ? "{\"message\":\"Resume deleted\"}"
+                        : "{\"error\":\"Delete failed — not found or not yours\"}");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                sendJson(ex, 500, "{\"error\":\"Server error\"}");
+            }
+        }).getFilters().add(new CorsFilter());
+
+        // ==================== HEALTH CHECK ====================
+        server.createContext("/health", (HttpExchange ex) -> {
+            sendJson(ex, 200, "{\"status\":\"ok\",\"server\":\"Job Portal API\"}");
+        }).getFilters().add(new CorsFilter());
+
         server.start();
-        System.out.println("Server running at http://localhost:8080 🚀");
+        System.out.println("Server running at http://localhost:8080");
     }
 
-    // ================= HELPER METHODS FOR MULTIPART =================
-    private static String extractMultipartField(String body, String fieldName, String boundary) {
-        String pattern = "name=\"" + fieldName + "\"";
-        int start = body.indexOf(pattern);
-        if (start == -1) return null;
-        
-        start = body.indexOf("\r\n\r\n", start) + 4;
-        int end = body.indexOf("\r\n--" + boundary, start);
-        
-        return body.substring(start, end).trim();
+    // ========================= HELPERS =========================
+
+    // Parse application/x-www-form-urlencoded body safely
+    private static Map<String, String> parseBody(HttpExchange ex) throws IOException {
+        byte[] raw = ex.getRequestBody().readAllBytes();
+        String body = new String(raw, StandardCharsets.UTF_8);
+        return parseFormEncoded(body);
     }
 
-    private static String extractMultipartFileName(String body, String boundary) {
-        String pattern = "filename=\"";
-        int start = body.indexOf(pattern);
-        if (start == -1) return null;
-        
-        start += pattern.length();
-        int end = body.indexOf("\"", start);
-        
-        return body.substring(start, end);
+    // Parse query string
+    private static Map<String, String> parseQueryString(HttpExchange ex) throws UnsupportedEncodingException {
+        String query = ex.getRequestURI().getQuery();
+        if (query == null || query.isEmpty()) return new HashMap<>();
+        return parseFormEncoded(query);
     }
 
-    private static byte[] extractMultipartFile(String body, String fieldName, String boundary) throws UnsupportedEncodingException {
-        String pattern = "name=\"" + fieldName + "\"";
-        int start = body.indexOf(pattern);
+    // Handles keys/values that themselves contain '=' (e.g. base64 passwords)
+    private static Map<String, String> parseFormEncoded(String data) throws UnsupportedEncodingException {
+        Map<String, String> map = new LinkedHashMap<>();
+        if (data == null || data.isEmpty()) return map;
+
+        String[] pairs = data.split("&");
+        for (String pair : pairs) {
+            int idx = pair.indexOf('=');
+            if (idx < 0) continue;
+            String key   = URLDecoder.decode(pair.substring(0, idx), "UTF-8");
+            String value = URLDecoder.decode(pair.substring(idx + 1), "UTF-8");
+            map.put(key, value);
+        }
+
+        return map;
+    }
+
+    // Get a single query param by name
+    private static String getQueryParam(HttpExchange ex, String name) throws UnsupportedEncodingException {
+        return parseQueryString(ex).get(name);
+    }
+
+    // Send JSON response — uses byte length, not char length
+    private static void sendJson(HttpExchange ex, int code, String json) throws IOException {
+        byte[] bytes = json.getBytes(StandardCharsets.UTF_8);
+        ex.getResponseHeaders().add("Content-Type", "application/json; charset=UTF-8");
+        ex.sendResponseHeaders(code, bytes.length);
+        try (OutputStream os = ex.getResponseBody()) {
+            os.write(bytes);
+        }
+    }
+
+    private static void send405(HttpExchange ex) throws IOException {
+        sendJson(ex, 405, "{\"error\":\"Method not allowed\"}");
+    }
+
+    // Safe int parse from map
+    private static int intParam(Map<String, String> map, String key) {
+        try { return Integer.parseInt(map.getOrDefault(key, "0")); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    // Safe double parse from map
+    private static double doubleParam(Map<String, String> map, String key) {
+        try { return Double.parseDouble(map.getOrDefault(key, "0")); }
+        catch (NumberFormatException e) { return 0; }
+    }
+
+    // Escape special chars for safe JSON string embedding
+    private static String escape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\")
+                .replace("\"", "\\\"")
+                .replace("\n", "\\n")
+                .replace("\r", "\\r")
+                .replace("\t", "\\t");
+    }
+
+    // Build JSON for a list of jobs
+    private static String jobsToJson(List<Map<String, String>> jobs) {
+        StringBuilder json = new StringBuilder("[");
+        for (int i = 0; i < jobs.size(); i++) {
+            json.append(jobToJson(jobs.get(i)));
+            if (i < jobs.size() - 1) json.append(",");
+        }
+        json.append("]");
+        return json.toString();
+    }
+
+    // Build JSON for a single job map
+    private static String jobToJson(Map<String, String> j) {
+        return "{" +
+               "\"id\":\""             + escape(j.get("id"))             + "\"," +
+               "\"title\":\""          + escape(j.get("title"))          + "\"," +
+               "\"description\":\""    + escape(j.get("description"))    + "\"," +
+               "\"salary\":\""         + escape(j.get("salary"))         + "\"," +
+               "\"location\":\""       + escape(j.get("location"))       + "\"," +
+               "\"company\":\""        + escape(j.get("company"))        + "\"," +
+               "\"recruiterEmail\":\"" + escape(j.get("recruiterEmail")) + "\"," +
+               "\"applicantCount\":\"" + escape(j.get("applicantCount")) + "\"," +
+               "\"createdAt\":\""      + escape(j.get("createdAt"))      + "\"" +
+               "}";
+    }
+
+    // ========================= MULTIPART HELPERS (binary-safe) =========================
+
+    private static final byte[] CRLF = "\r\n".getBytes(StandardCharsets.ISO_8859_1);
+
+    // Find a field value in multipart body without corrupting binary parts
+    private static String extractFieldFromBytes(byte[] body, String fieldName, String boundary) {
+        String header = "name=\"" + fieldName + "\"";
+        String bodyStr = new String(body, StandardCharsets.ISO_8859_1);
+
+        int pos = bodyStr.indexOf(header);
+        if (pos == -1) return null;
+
+        int dataStart = bodyStr.indexOf("\r\n\r\n", pos);
+        if (dataStart == -1) return null;
+        dataStart += 4;
+
+        int dataEnd = bodyStr.indexOf("\r\n--" + boundary, dataStart);
+        if (dataEnd == -1) return null;
+
+        return bodyStr.substring(dataStart, dataEnd).trim();
+    }
+
+    // Extract the filename from Content-Disposition header in multipart body
+    private static String extractFileNameFromBytes(byte[] body, String boundary) {
+        String bodyStr = new String(body, StandardCharsets.ISO_8859_1);
+        String marker  = "filename=\"";
+        int start = bodyStr.indexOf(marker);
         if (start == -1) return null;
-        
-        start = body.indexOf("\r\n\r\n", start) + 4;
-        int end = body.indexOf("\r\n--" + boundary, start);
-        
-        String fileContent = body.substring(start, end);
-        return fileContent.getBytes("ISO-8859-1");
+        start += marker.length();
+        int end = bodyStr.indexOf("\"", start);
+        if (end == -1) return null;
+        return bodyStr.substring(start, end);
+    }
+
+    // Extract raw file bytes from multipart body — binary-safe
+    private static byte[] extractFileDataFromBytes(byte[] body, String fieldName, String boundary) {
+        String bodyStr = new String(body, StandardCharsets.ISO_8859_1);
+
+        // Find the part containing the file field
+        String header   = "name=\"" + fieldName + "\"";
+        int headerPos   = bodyStr.indexOf(header);
+        if (headerPos == -1) return null;
+
+        // Skip past the blank line that separates headers from data
+        int dataStart = bodyStr.indexOf("\r\n\r\n", headerPos);
+        if (dataStart == -1) return null;
+        dataStart += 4;
+
+        // Find the closing boundary
+        String closingBoundary = "\r\n--" + boundary;
+        int dataEnd = bodyStr.indexOf(closingBoundary, dataStart);
+        if (dataEnd == -1) return null;
+
+        // Copy raw bytes out of the original byte array
+        byte[] fileData = new byte[dataEnd - dataStart];
+        System.arraycopy(body, dataStart, fileData, 0, fileData.length);
+        return fileData;
     }
 }

@@ -9,33 +9,35 @@ public class ResumesDAO {
     // ================= UPLOAD RESUME =================
     public boolean uploadResume(String email, String fileName, String filePath, int fileSize) {
 
-        try {
-            Connection conn = DBConnection.getConnection();
+        String countSql = "SELECT COUNT(*) FROM resumes WHERE candidate_email = ?";
 
-            // Set all other resumes as non-primary if this is the first one
-            String countSql = "SELECT COUNT(*) FROM resumes WHERE candidate_email = ?";
-            PreparedStatement countPs = conn.prepareStatement(countSql);
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement countPs = conn.prepareStatement(countSql)) {
+
             countPs.setString(1, email);
-            ResultSet countRs = countPs.executeQuery();
-            countRs.next();
-            boolean isFirst = countRs.getInt(1) == 0;
+
+            boolean isFirst;
+            try (ResultSet countRs = countPs.executeQuery()) {
+                countRs.next();
+                isFirst = countRs.getInt(1) == 0;
+            }
 
             String sql = "INSERT INTO resumes(candidate_email, file_name, file_path, file_size, is_primary) VALUES (?, ?, ?, ?, ?)";
 
-            PreparedStatement ps = conn.prepareStatement(sql);
-            ps.setString(1, email);
-            ps.setString(2, fileName);
-            ps.setString(3, filePath);
-            ps.setInt(4, fileSize);
-            ps.setBoolean(5, isFirst); // First resume is primary by default
+            try (PreparedStatement ps = conn.prepareStatement(sql)) {
+                ps.setString(1, email);
+                ps.setString(2, fileName);
+                ps.setString(3, filePath);
+                ps.setInt(4, fileSize);
+                ps.setBoolean(5, isFirst);
 
-            return ps.executeUpdate() > 0;
+                return ps.executeUpdate() > 0;
+            }
 
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-
-        return false;
     }
 
     // ================= GET ALL RESUMES FOR USER =================
@@ -43,28 +45,26 @@ public class ResumesDAO {
 
         List<Map<String, Object>> resumes = new ArrayList<>();
 
-        try {
-            Connection conn = DBConnection.getConnection();
+        String sql = "SELECT id, file_name, file_path, file_size, uploaded_at, is_primary " +
+                     "FROM resumes WHERE candidate_email = ? " +
+                     "ORDER BY is_primary DESC, uploaded_at DESC";
 
-            String sql = "SELECT id, file_name, file_path, file_size, uploaded_at, is_primary FROM resumes WHERE candidate_email = ? ORDER BY is_primary DESC, uploaded_at DESC";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            PreparedStatement ps = conn.prepareStatement(sql);
             ps.setString(1, email);
 
-            ResultSet rs = ps.executeQuery();
-
-            while (rs.next()) {
-
-                Map<String, Object> resume = new HashMap<>();
-
-                resume.put("id", rs.getInt("id"));
-                resume.put("fileName", rs.getString("file_name"));
-                resume.put("filePath", rs.getString("file_path"));
-                resume.put("fileSize", rs.getInt("file_size"));
-                resume.put("uploadedAt", rs.getTimestamp("uploaded_at"));
-                resume.put("isPrimary", rs.getBoolean("is_primary"));
-
-                resumes.add(resume);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Map<String, Object> resume = new HashMap<>();
+                    resume.put("id",         rs.getInt("id"));
+                    resume.put("fileName",   rs.getString("file_name"));
+                    resume.put("filePath",   rs.getString("file_path"));
+                    resume.put("fileSize",   rs.getInt("file_size"));
+                    resume.put("uploadedAt", rs.getTimestamp("uploaded_at"));
+                    resume.put("isPrimary",  rs.getBoolean("is_primary"));
+                    resumes.add(resume);
+                }
             }
 
         } catch (Exception e) {
@@ -77,26 +77,23 @@ public class ResumesDAO {
     // ================= GET RESUME BY ID =================
     public Map<String, Object> getResumeById(int resumeId) {
 
-        try {
-            Connection conn = DBConnection.getConnection();
+        String sql = "SELECT id, file_name, file_path, candidate_email, file_size FROM resumes WHERE id = ?";
 
-            String sql = "SELECT id, file_name, file_path, candidate_email FROM resumes WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            PreparedStatement ps = conn.prepareStatement(sql);
             ps.setInt(1, resumeId);
 
-            ResultSet rs = ps.executeQuery();
-
-            if (rs.next()) {
-
-                Map<String, Object> resume = new HashMap<>();
-
-                resume.put("id", rs.getInt("id"));
-                resume.put("fileName", rs.getString("file_name"));
-                resume.put("filePath", rs.getString("file_path"));
-                resume.put("candidateEmail", rs.getString("candidate_email"));
-
-                return resume;
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Map<String, Object> resume = new HashMap<>();
+                    resume.put("id",             rs.getInt("id"));
+                    resume.put("fileName",        rs.getString("file_name"));
+                    resume.put("filePath",        rs.getString("file_path"));
+                    resume.put("candidateEmail",  rs.getString("candidate_email"));
+                    resume.put("fileSize",        rs.getInt("file_size"));
+                    return resume;
+                }
             }
 
         } catch (Exception e) {
@@ -109,47 +106,76 @@ public class ResumesDAO {
     // ================= SET PRIMARY RESUME =================
     public boolean setPrimaryResume(int resumeId, String email) {
 
-        try {
-            Connection conn = DBConnection.getConnection();
+        String clearSql = "UPDATE resumes SET is_primary = FALSE WHERE candidate_email = ?";
+        String setSql   = "UPDATE resumes SET is_primary = TRUE  WHERE id = ? AND candidate_email = ?";
 
-            // Set all resumes for this user as non-primary
-            String updateSql = "UPDATE resumes SET is_primary = FALSE WHERE candidate_email = ?";
-            PreparedStatement updatePs = conn.prepareStatement(updateSql);
-            updatePs.setString(1, email);
-            updatePs.executeUpdate();
+        try (Connection conn = DBConnection.getConnection()) {
 
-            // Set the selected resume as primary
-            String setPrimary = "UPDATE resumes SET is_primary = TRUE WHERE id = ? AND candidate_email = ?";
-            PreparedStatement setPrimaryPs = conn.prepareStatement(setPrimary);
-            setPrimaryPs.setInt(1, resumeId);
-            setPrimaryPs.setString(2, email);
+            conn.setAutoCommit(false);
 
-            return setPrimaryPs.executeUpdate() > 0;
+            try (PreparedStatement clearPs = conn.prepareStatement(clearSql)) {
+                clearPs.setString(1, email);
+                clearPs.executeUpdate();
+            }
+
+            int updated;
+            try (PreparedStatement setPs = conn.prepareStatement(setSql)) {
+                setPs.setInt(1, resumeId);
+                setPs.setString(2, email);
+                updated = setPs.executeUpdate();
+            }
+
+            conn.commit();
+            conn.setAutoCommit(true);
+
+            return updated > 0;
 
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
         }
-
-        return false;
     }
 
     // ================= DELETE RESUME =================
-    public boolean deleteResume(int resumeId) {
+    // candidateEmail ensures a user can only delete their own resume
+    public boolean deleteResume(int resumeId, String candidateEmail) {
 
-        try {
-            Connection conn = DBConnection.getConnection();
+        // First retrieve the file path so caller can clean up the file from disk
+        String sql = "DELETE FROM resumes WHERE id = ? AND candidate_email = ?";
 
-            String sql = "DELETE FROM resumes WHERE id = ?";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            PreparedStatement ps = conn.prepareStatement(sql);
             ps.setInt(1, resumeId);
+            ps.setString(2, candidateEmail);
 
             return ps.executeUpdate() > 0;
 
         } catch (Exception e) {
             e.printStackTrace();
+            return false;
+        }
+    }
+
+    // ================= GET FILE PATH FOR DELETION =================
+    public String getFilePath(int resumeId, String candidateEmail) {
+
+        String sql = "SELECT file_path FROM resumes WHERE id = ? AND candidate_email = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, resumeId);
+            ps.setString(2, candidateEmail);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return rs.getString("file_path");
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
-        return false;
+        return null;
     }
 }
