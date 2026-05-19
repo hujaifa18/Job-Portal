@@ -10,16 +10,15 @@
 
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <div class="navbar-links">
+  <div class="navbar-links" id="navLinks">
     <a href="index.html">Home</a>
     <a href="jobs.html">Browse Jobs</a>
-    <a href="login.html" class="btn-nav-cta">Login</a>
   </div>
 </nav>
 
 <div class="container">
   <div class="section-heading">
-    <h2>✏️ Post a New Job</h2>
+    <h2>Post a New Job</h2>
     <p class="text-muted small-text">Fill in the details below to publish your job listing</p>
   </div>
 
@@ -49,14 +48,41 @@
     <input id="company" type="text" placeholder="Your company name">
   </div>
 
-  <div class="form-group">
+  <!-- Email is hidden and auto-filled from session; shown as read-only if not logged in -->
+  <div class="form-group" id="emailGroup" style="display:none;">
     <label for="email">Recruiter Email</label>
     <input id="email" type="email" placeholder="recruiter@company.com">
   </div>
 
-  <button onclick="postJob()">🚀 Post Job</button>
+  <button onclick="postJob()">Post Job</button>
 </div>
 
 <script src="script.js"></script>
+<script>
+  const email = sessionStorage.getItem('email');
+  const role  = sessionStorage.getItem('role');
+  const nav   = document.getElementById('navLinks');
+
+  if (email && role === 'RECRUITER') {
+    // Pre-fill hidden email field from session
+    document.getElementById('email').value = email;
+    nav.innerHTML = `
+      <a href="index.html">Home</a>
+      <a href="recruiter-dashboard.html">Dashboard</a>
+      <span class="text-muted small-text">${email}</span>
+      <button class="logout-btn" onclick="logout()">Logout</button>`;
+  } else if (email && role === 'CANDIDATE') {
+    // Candidates shouldn't be here — redirect
+    alert('Only recruiters can post jobs.');
+    window.location.href = 'candidate-dashboard.html';
+  } else {
+    // Not logged in — show email field manually
+    document.getElementById('emailGroup').style.display = 'block';
+    nav.innerHTML = `
+      <a href="index.html">Home</a>
+      <a href="jobs.html">Browse Jobs</a>
+      <a href="login.html" class="btn-nav-cta">Login</a>`;
+  }
+</script>
 </body>
 </html>

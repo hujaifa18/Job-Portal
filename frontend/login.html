@@ -12,27 +12,28 @@
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
   <div class="navbar-links">
     <a href="index.html">Home</a>
+    <a href="jobs.html">Browse Jobs</a>
     <a href="register.html" class="btn-nav-cta">Sign Up</a>
   </div>
 </nav>
 
 <div class="container">
   <div class="section-heading">
-    <h2>Welcome back 👋</h2>
+    <h2>Welcome back</h2>
     <p class="text-muted small-text">Login to access your dashboard</p>
   </div>
 
   <div class="form-group">
     <label for="email">Email Address</label>
-    <input type="email" id="email" placeholder="you@example.com">
+    <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
   </div>
 
   <div class="form-group">
     <label for="password">Password</label>
-    <input type="password" id="password" placeholder="Enter your password">
+    <input type="password" id="password" placeholder="Enter your password" autocomplete="current-password">
   </div>
 
-  <button onclick="login()">🔑 Login to Account</button>
+  <button onclick="login()">Login to Account</button>
 
   <div class="text-center mt-20">
     <p class="text-muted small-text">Don't have an account? <a href="register.html" class="link-secondary">Register here</a></p>
@@ -40,5 +41,15 @@
 </div>
 
 <script src="script.js"></script>
+<script>
+  // Already logged in → redirect
+  const email = sessionStorage.getItem('email');
+  const role  = sessionStorage.getItem('role');
+  if (email && role) {
+    window.location.href = role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
+  }
+  // Allow Enter key to submit
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
 </body>
 </html>

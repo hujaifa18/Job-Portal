@@ -10,7 +10,7 @@
 
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <div class="navbar-links">
+  <div class="navbar-links" id="navLinks">
     <a href="index.html">Home</a>
     <a href="jobs.html">Browse Jobs</a>
     <a href="login.html" class="btn-nav-cta">Login</a>
@@ -19,11 +19,10 @@
 
 <div class="container">
   <div class="section-heading">
-    <h2>📄 My Resume</h2>
+    <h2>My Resume</h2>
     <p class="text-muted small-text">Upload and manage your resume files</p>
   </div>
 
-  <!-- Upload Box -->
   <div class="upload-box" id="uploadBox">
     <div class="upload-icon">📤</div>
     <p><strong>Click to upload or drag & drop your resume</strong></p>
@@ -31,116 +30,119 @@
     <input type="file" id="fileInput" class="file-input" accept=".pdf">
   </div>
 
-  <!-- Progress Bar -->
   <div class="progress-bar" id="progressBar" style="display:none;">
     <div class="progress-fill" id="progressFill"></div>
   </div>
 
-  <!-- Message -->
   <div id="message" style="display:none;"></div>
 
-  <!-- Resume List -->
   <div class="file-list">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
       <h3>Your Resumes</h3>
-      <button onclick="loadResumes()" class="btn-secondary btn-sm">🔄 Refresh</button>
+      <button onclick="loadResumes()" class="btn-secondary btn-sm">Refresh</button>
     </div>
     <div id="resumeList" class="resume-list"></div>
   </div>
 
   <div class="divider"></div>
-  <a href="jobs.html" class="nav-button">← Back to Jobs</a>
+  <a href="jobs.html" class="nav-button">Back to Jobs</a>
 </div>
 
 <script>
-  const uploadBox  = document.getElementById('uploadBox');
-  const fileInput  = document.getElementById('fileInput');
+  const API = 'http://localhost:8080';
+
+  // Nav setup
+  const _email = sessionStorage.getItem('email');
+  const _role  = sessionStorage.getItem('role');
+  const nav    = document.getElementById('navLinks');
+  if (_email && _role) {
+    const dest = _role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
+    nav.innerHTML = `
+      <a href="index.html">Home</a>
+      <a href="${dest}">Dashboard</a>
+      <span class="text-muted small-text">${_email}</span>
+      <button class="logout-btn" onclick="sessionStorage.clear();window.location.href='login.html';">Logout</button>`;
+  }
+
+  const uploadBox    = document.getElementById('uploadBox');
+  const fileInput    = document.getElementById('fileInput');
   const progressBar  = document.getElementById('progressBar');
   const progressFill = document.getElementById('progressFill');
-  const message = document.getElementById('message');
+  const messageEl    = document.getElementById('message');
 
   uploadBox.addEventListener('click', () => fileInput.click());
-
-  uploadBox.addEventListener('dragover', (e) => {
-    e.preventDefault();
-    uploadBox.classList.add('dragover');
-  });
+  uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.classList.add('dragover'); });
   uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('dragover'));
-  uploadBox.addEventListener('drop', (e) => {
+  uploadBox.addEventListener('drop', e => {
     e.preventDefault();
     uploadBox.classList.remove('dragover');
-    const files = e.dataTransfer.files;
-    if (files.length > 0) { fileInput.files = files; uploadResume(); }
+    if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; uploadResume(); }
   });
-
   fileInput.addEventListener('change', uploadResume);
 
   function uploadResume() {
     const file = fileInput.files[0];
     if (!file) return;
+    if (!file.name.toLowerCase().endsWith('.pdf')) { showMessage('Please upload a PDF file only.', 'error'); return; }
+    if (file.size > 5 * 1024 * 1024) { showMessage('File size must be less than 5MB.', 'error'); return; }
 
-    if (!file.name.toLowerCase().endsWith('.pdf')) {
-      showMessage('Please upload a PDF file only.', 'error'); return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      showMessage('File size must be less than 5MB.', 'error'); return;
-    }
+    const email = sessionStorage.getItem('email');
+    if (!email) { showMessage('Please login first.', 'error'); return; }
 
     const formData = new FormData();
-    formData.append('email', sessionStorage.getItem('email') || '');
+    formData.append('email', email);
     formData.append('file', file);
 
     progressBar.style.display = 'block';
-    progressFill.style.width = '30%';
+    progressFill.style.width = '40%';
 
-    fetch('http://localhost:8080/upload-resume', { method:'POST', body:formData })
+    fetch(`${API}/upload-resume`, { method: 'POST', body: formData })
     .then(res => res.text())
-    .then(data => {
+    .then(() => {
       progressFill.style.width = '100%';
       setTimeout(() => {
         progressBar.style.display = 'none';
         progressFill.style.width = '0%';
-        showMessage('✅ Resume uploaded successfully!', 'success');
+        showMessage('Resume uploaded successfully!', 'success');
         fileInput.value = '';
         loadResumes();
       }, 500);
     })
-    .catch(error => {
+    .catch(err => {
       progressBar.style.display = 'none';
-      showMessage('❌ Error uploading: ' + error.message, 'error');
+      showMessage('Error uploading: ' + err.message, 'error');
     });
   }
 
   function loadResumes() {
     const email = sessionStorage.getItem('email');
     if (!email) { showMessage('Please login first to view resumes.', 'error'); return; }
-
-    fetch('http://localhost:8080/resumes?email=' + encodeURIComponent(email))
+    fetch(`${API}/resumes?email=${encodeURIComponent(email)}`)
     .then(res => res.json())
     .then(data => {
-      let html = '';
-      if (data.length === 0) {
-        html = `<div class="empty-state"><div class="empty-icon">📄</div><p>No resumes uploaded yet.</p></div>`;
-      } else {
-        data.forEach(resume => {
-          const primaryBadge = resume.isPrimary ? '<span class="primary-badge">✓ Primary</span>' : '';
-          const setPrimaryBtn = !resume.isPrimary
-            ? `<button class="btn-ghost btn-sm" onclick="setAsDefault(${resume.id})">Set as Primary</button>`
-            : '';
-          html += `
-            <div class="file-item">
-              <div class="file-info">
-                <div class="file-name">📄 ${resume.fileName} ${primaryBadge}</div>
-                <div class="file-size">${(resume.fileSize / 1024).toFixed(2)} KB · Uploaded ${new Date(resume.uploadedAt).toLocaleDateString()}</div>
-              </div>
-              <div class="file-actions">
-                <button class="btn-secondary btn-sm" onclick="downloadResume(${resume.id})">⬇ Download</button>
-                ${setPrimaryBtn}
-              </div>
-            </div>`;
-        });
+      if (!data.length) {
+        document.getElementById('resumeList').innerHTML =
+          `<div class="empty-state"><div class="empty-icon">📄</div><p>No resumes uploaded yet.</p></div>`;
+        return;
       }
-      document.getElementById('resumeList').innerHTML = html;
+      document.getElementById('resumeList').innerHTML = data.map(resume => {
+        const primaryBadge = resume.isPrimary ? '<span class="primary-badge">Primary</span>' : '';
+        const setPrimaryBtn = !resume.isPrimary
+          ? `<button class="btn-ghost btn-sm" onclick="setAsDefault(${resume.id})">Set as Primary</button>`
+          : '';
+        return `
+          <div class="file-item">
+            <div class="file-info">
+              <div class="file-name">📄 ${resume.fileName} ${primaryBadge}</div>
+              <div class="file-size">${(resume.fileSize / 1024).toFixed(2)} KB &middot; Uploaded ${new Date(resume.uploadedAt).toLocaleDateString()}</div>
+            </div>
+            <div class="file-actions">
+              <button class="btn-secondary btn-sm" onclick="downloadResume(${resume.id})">Download</button>
+              ${setPrimaryBtn}
+              <button class="btn-danger btn-sm" onclick="deleteResume(${resume.id})">Delete</button>
+            </div>
+          </div>`;
+      }).join('');
     })
     .catch(() => {
       document.getElementById('resumeList').innerHTML = '<p style="color:#fca5a5;">Error loading resumes.</p>';
@@ -148,30 +150,48 @@
   }
 
   function setAsDefault(resumeId) {
-    fetch('http://localhost:8080/set-primary-resume', {
-      method:'POST',
-      headers:{'Content-Type':'application/x-www-form-urlencoded'},
-      body:'resumeId=' + resumeId + '&email=' + encodeURIComponent(sessionStorage.getItem('email') || '')
+    const email = sessionStorage.getItem('email');
+    fetch(`${API}/set-primary-resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
     })
     .then(res => res.text())
-    .then(() => { showMessage('✅ Primary resume updated!', 'success'); loadResumes(); })
-    .catch(err => showMessage('❌ Error: ' + err.message, 'error'));
+    .then(() => { showMessage('Primary resume updated!', 'success'); loadResumes(); })
+    .catch(err => showMessage('Error: ' + err.message, 'error'));
   }
 
   function downloadResume(resumeId) {
-    window.open('http://localhost:8080/download-resume?id=' + resumeId, '_blank');
+    window.open(`${API}/download-resume?id=${resumeId}`, '_blank');
+  }
+
+  function deleteResume(resumeId) {
+    if (!confirm('Delete this resume?')) return;
+    const email = sessionStorage.getItem('email');
+    fetch(`${API}/delete-resume`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
+    })
+    .then(res => res.text())
+    .then(data => {
+      if (data.includes('Deleted') || data.includes('deleted')) {
+        showMessage('Resume deleted.', 'success'); loadResumes();
+      } else {
+        showMessage('Failed to delete resume.', 'error');
+      }
+    })
+    .catch(err => showMessage('Error: ' + err.message, 'error'));
   }
 
   function showMessage(text, type) {
-    message.textContent = text;
-    message.className = 'alert alert-' + (type === 'error' ? 'error' : 'success');
-    message.style.display = 'flex';
-    setTimeout(() => { message.style.display = 'none'; }, 4000);
+    messageEl.textContent = text;
+    messageEl.className = 'alert alert-' + (type === 'error' ? 'error' : 'success');
+    messageEl.style.display = 'flex';
+    setTimeout(() => { messageEl.style.display = 'none'; }, 4000);
   }
 
-  window.addEventListener('load', () => {
-    if (sessionStorage.getItem('email')) loadResumes();
-  });
+  window.addEventListener('load', () => { if (sessionStorage.getItem('email')) loadResumes(); });
 </script>
 </body>
 </html>

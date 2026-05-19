@@ -8,12 +8,9 @@
 </head>
 <body>
 
-<!-- Navbar -->
 <nav class="navbar">
-  <div class="navbar-brand">
-    <span class="dot"></span> JobPortal
-  </div>
-  <div class="navbar-links">
+  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
+  <div class="navbar-links" id="navLinks">
     <a href="jobs.html">Browse Jobs</a>
     <a href="login.html">Login</a>
     <a href="register.html" class="btn-nav-cta">Get Started</a>
@@ -22,18 +19,16 @@
 
 <div class="container-wide">
 
-  <!-- Hero -->
   <div class="hero">
-    <div class="hero-badge">🚀 Connecting Talent with Opportunity</div>
+    <div class="hero-badge">Connecting Talent with Opportunity</div>
     <h1>Find Your Next<br><span>Dream Job</span></h1>
     <p>Browse thousands of job openings and connect with top companies. Whether you're a candidate or a recruiter, we've got you covered.</p>
     <div class="hero-buttons">
-      <a href="register.html" class="nav-button primary">📝 Get Started Free</a>
-      <a href="login.html" class="nav-button">🔑 Login to Account</a>
+      <a href="register.html" class="nav-button primary">Get Started Free</a>
+      <a href="login.html" class="nav-button">Login to Account</a>
     </div>
   </div>
 
-  <!-- How it Works -->
   <div class="section-heading section-heading--center">
     <h2>How it Works</h2>
     <p>Simple, fast, and effective — get started in minutes</p>
@@ -53,25 +48,24 @@
     <div class="feature-card">
       <div class="feature-icon">⚡</div>
       <h3>Quick & Easy</h3>
-      <p>Simple registration process and an intuitive dashboard to get you started in minutes — no setup needed.</p>
+      <p>Simple registration and an intuitive dashboard to get you started in minutes — no setup needed.</p>
     </div>
   </div>
 
-  <!-- Quick Access -->
-  <div class="section-heading section-heading--center">
-    <h2>Quick Access</h2>
-    <p>Jump straight to what you need</p>
-  </div>
-
-  <div class="nav-buttons">
-    <a href="login.html"      class="nav-button primary">🔑 Login</a>
-    <a href="register.html"   class="nav-button primary">📝 Register</a>
-    <a href="jobs.html"       class="nav-button">💼 Browse Jobs</a>
-    <a href="postJob.html"    class="nav-button">✏️ Post a Job</a>
-    <a href="applicants.html" class="nav-button">👤 Applicants</a>
-    <a href="resume.html"     class="nav-button">📄 My Resume</a>
-  </div>
-
 </div>
+
+<script>
+  // Redirect if already logged in, and adjust nav
+  const email = sessionStorage.getItem('email');
+  const role  = sessionStorage.getItem('role');
+  if (email && role) {
+    const nav = document.getElementById('navLinks');
+    const dest = role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
+    nav.innerHTML = `
+      <span class="text-muted small-text">${email}</span>
+      <a href="${dest}" class="btn-nav-cta">My Dashboard</a>
+      <button class="logout-btn" onclick="sessionStorage.clear();location.reload();">Logout</button>`;
+  }
+</script>
 </body>
 </html>

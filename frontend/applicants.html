@@ -10,7 +10,7 @@
 
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <div class="navbar-links">
+  <div class="navbar-links" id="navLinks">
     <a href="index.html">Home</a>
     <a href="jobs.html">Browse Jobs</a>
     <a href="login.html" class="btn-nav-cta">Login</a>
@@ -20,22 +20,33 @@
 <div class="container-wide">
   <div class="page-header dashboard-header">
     <div>
-      <h2>👤 Job Applicants</h2>
+      <h2>Job Applicants</h2>
       <p class="text-muted small-text">All candidates who have applied</p>
     </div>
-    <button onclick="loadApplicants()" class="btn-secondary">🔄 Refresh</button>
+    <button onclick="loadApplicants()" class="btn-secondary">Refresh</button>
   </div>
 
-  <div class="grid" id="list">
+  <div id="list">
     <div class="empty-state">
       <div class="empty-icon">👤</div>
-      <p>Click "Refresh" to load applicants</p>
+      <p>Loading applicants...</p>
     </div>
   </div>
 </div>
 
 <script src="script.js"></script>
 <script>
+  const email = sessionStorage.getItem('email');
+  const role  = sessionStorage.getItem('role');
+  const nav   = document.getElementById('navLinks');
+  if (email && role) {
+    const dest = role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
+    nav.innerHTML = `
+      <a href="index.html">Home</a>
+      <a href="${dest}">Dashboard</a>
+      <span class="text-muted small-text">${email}</span>
+      <button class="logout-btn" onclick="logout()">Logout</button>`;
+  }
   window.addEventListener('load', loadApplicants);
 </script>
 </body>

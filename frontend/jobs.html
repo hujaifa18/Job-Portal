@@ -10,9 +10,8 @@
 
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <div class="navbar-links">
+  <div class="navbar-links" id="navLinks">
     <a href="index.html">Home</a>
-    <a href="resume.html">My Resume</a>
     <a href="login.html" class="btn-nav-cta">Login</a>
   </div>
 </nav>
@@ -20,26 +19,39 @@
 <div class="container-wide">
   <div class="page-header dashboard-header">
     <div>
-      <h2>💼 Available Jobs</h2>
+      <h2>Available Jobs</h2>
       <p class="text-muted small-text">Find your next opportunity</p>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button onclick="loadJobs()" class="btn-secondary">🔄 Refresh</button>
-      <a href="resume.html" class="nav-button">📄 My Resume</a>
-    </div>
+    <button onclick="loadJobs()" class="btn-secondary">Refresh</button>
   </div>
 
-  <div class="grid" id="jobList">
+  <div id="jobList">
     <div class="empty-state">
       <div class="empty-icon">💼</div>
-      <p>Click "Refresh" to load available jobs</p>
+      <p>Loading jobs...</p>
     </div>
   </div>
 </div>
 
 <script src="script.js"></script>
 <script>
-  // Auto-load on page open
+  // Adjust navbar based on session
+  const email = sessionStorage.getItem('email');
+  const role  = sessionStorage.getItem('role');
+  const nav   = document.getElementById('navLinks');
+  if (email && role) {
+    const dest = role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
+    nav.innerHTML = `
+      <a href="index.html">Home</a>
+      <span class="text-muted small-text">${email}</span>
+      <a href="${dest}" class="btn-nav-cta">Dashboard</a>
+      <button class="logout-btn" onclick="logout()">Logout</button>`;
+  } else {
+    nav.innerHTML = `
+      <a href="index.html">Home</a>
+      <a href="login.html">Login</a>
+      <a href="register.html" class="btn-nav-cta">Get Started</a>`;
+  }
   window.addEventListener('load', loadJobs);
 </script>
 </body>
