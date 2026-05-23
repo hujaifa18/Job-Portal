@@ -10,13 +10,22 @@
 
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <div class="navbar-links">
-    <span id="navEmail" class="text-muted small-text"></span>
-    <button class="logout-btn" onclick="logout()">Logout</button>
-  </div>
+  <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <div class="navbar-links" id="navLinks"></div>
 </nav>
 
 <div class="container-wide">
+  <div class="top-strip">
+    <p>Search the latest jobs in Bangladesh and apply with a single click.</p>
+    <div class="top-strip-links">
+      <a href="login.html">Login</a>
+      <a href="register.html">Register</a>
+    </div>
+  </div>
 
   <div class="dashboard-header page-header">
     <div>
@@ -101,9 +110,10 @@
 
 </div>
 
+<script src="script.js"></script>
 <!-- Edit Job Modal -->
-<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:var(--navy-2);border:1px solid var(--border-2);border-radius:var(--radius-xl);padding:36px;width:min(560px,100%);max-height:90vh;overflow-y:auto;">
+<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.35);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);padding:36px;width:min(560px,100%);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-sm);">
     <h2 style="margin-bottom:24px;">Edit Job</h2>
     <input type="hidden" id="editJobId">
     <div class="form-group"><label>Job Title</label><input id="editTitle" type="text"></div>
@@ -131,7 +141,7 @@
       window.location.href = 'login.html';
       return;
     }
-    document.getElementById('navEmail').textContent = email;
+    setupNavbar();
     document.getElementById('welcomeMsg').textContent = 'Welcome back, ' + email;
     loadRecruiterJobs();
     loadApplicantsForRecruiter();

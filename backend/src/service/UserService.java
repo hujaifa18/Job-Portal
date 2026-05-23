@@ -13,9 +13,17 @@ public class UserService {
         if (name == null || name.trim().isEmpty()) return false;
         if (email == null || !email.contains("@")) return false;
         if (password == null || password.length() < 6) return false;
-        if (!role.equals("candidate") && !role.equals("recruiter")) return false;
+        if (role == null) return false;
+        String normalizedRole = role.trim();
+        if (normalizedRole.equalsIgnoreCase("recruiter")) {
+            normalizedRole = "RECRUITER";
+        } else if (normalizedRole.equalsIgnoreCase("candidate")) {
+            normalizedRole = "CANDIDATE";
+        } else {
+            return false;
+        }
 
-        return dao.register(new User(name.trim(), email.trim(), password, role));
+        return dao.register(new User(name.trim(), email.trim(), password, normalizedRole));
     }
 
     public String login(String email, String password) {

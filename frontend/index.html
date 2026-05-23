@@ -10,62 +10,112 @@
 
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <div class="navbar-links" id="navLinks">
-    <a href="jobs.html">Browse Jobs</a>
-    <a href="login.html">Login</a>
-    <a href="register.html" class="btn-nav-cta">Get Started</a>
-  </div>
+  <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <div class="navbar-links" id="navLinks"></div>
 </nav>
 
 <div class="container-wide">
+  <div class="top-strip">
+    <p>Search the latest jobs in Bangladesh and apply with a single click.</p>
+    <div class="top-strip-links">
+      <a href="login.html">Login</a>
+      <a href="register.html">Register</a>
+    </div>
+  </div>
 
-  <div class="hero">
-    <div class="hero-badge">Connecting Talent with Opportunity</div>
-    <h1>Find Your Next<br><span>Dream Job</span></h1>
-    <p>Browse thousands of job openings and connect with top companies. Whether you're a candidate or a recruiter, we've got you covered.</p>
-    <div class="hero-buttons">
-      <a href="register.html" class="nav-button primary">Get Started Free</a>
-      <a href="login.html" class="nav-button">Login to Account</a>
+  <div class="hero hero-clone">
+    <div class="hero-copy">
+      <div class="hero-kicker">bdjobs-style job portal</div>
+      <h1>Find jobs, upload your resume, and apply instantly</h1>
+      <p>Explore the latest openings from employers across Bangladesh with a familiar and clean job search experience.</p>
+
+      <div class="hero-search">
+        <div class="search-field">
+          <label>Keyword</label>
+          <input type="text" placeholder="Job title, skill, company">
+        </div>
+        <div class="search-field">
+          <label>Location</label>
+          <input type="text" placeholder="City or district">
+        </div>
+        <button onclick="window.location.href='jobs.html'">Search Jobs</button>
+      </div>
+
+      <div class="hero-stats">
+        <div><strong>4,900+</strong> Live jobs</div>
+        <div><strong>1,200+</strong> Recruiters</div>
+        <div><strong>100%</strong> Free access</div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="stat-card highlight">
+        <p>Upload resume in PDF</p>
+        <strong>Apply faster with your CV</strong>
+      </div>
+      <div class="stat-card">
+        <p>Post jobs instantly</p>
+        <strong>Get employer attention quickly</strong>
+      </div>
     </div>
   </div>
 
   <div class="section-heading section-heading--center">
-    <h2>How it Works</h2>
-    <p>Simple, fast, and effective — get started in minutes</p>
+    <h2>Popular Services</h2>
+    <p>Everything a job seeker or recruiter needs in one portal.</p>
   </div>
 
-  <div class="features">
+  <div class="features features-clone">
     <div class="feature-card">
-      <div class="feature-icon">👥</div>
-      <h3>For Candidates</h3>
-      <p>Browse thousands of job openings and apply to positions that match your skills and interests. Track your applications in real time.</p>
+      <div class="feature-icon">👤</div>
+      <h3>Job Seeker</h3>
+      <p>Search jobs by title, company, or location and save your preferred listings.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📨</div>
+      <h3>Easy Apply</h3>
+      <p>Upload your resume and apply in just a few clicks.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🏢</div>
-      <h3>For Recruiters</h3>
-      <p>Post jobs, review applicants, accept or reject candidates, and build your dream team with qualified professionals.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">⚡</div>
-      <h3>Quick & Easy</h3>
-      <p>Simple registration and an intuitive dashboard to get you started in minutes — no setup needed.</p>
+      <h3>Recruiter</h3>
+      <p>Post jobs, review applications and manage hiring from your dashboard.</p>
     </div>
   </div>
 
+  <div class="section-heading section-heading--center">
+    <h2>Recent Jobs</h2>
+    <p>Latest vacancies posted across Bangladesh.</p>
+  </div>
+
+  <div class="job-grid">
+    <div class="job-card">
+      <div class="job-label">Full Time</div>
+      <h3>Software Engineer</h3>
+      <p>Tech Company · Dhaka</p>
+      <span class="salary-chip">৳55,000</span>
+    </div>
+    <div class="job-card">
+      <div class="job-label">Part Time</div>
+      <h3>Customer Support</h3>
+      <p>Logistics · Chattogram</p>
+      <span class="salary-chip">৳18,000</span>
+    </div>
+    <div class="job-card">
+      <div class="job-label">Contract</div>
+      <h3>Graphic Designer</h3>
+      <p>Creative Studio · Sylhet</p>
+      <span class="salary-chip">৳22,000</span>
+    </div>
+  </div>
 </div>
 
 <script>
-  // Redirect if already logged in, and adjust nav
-  const email = sessionStorage.getItem('email');
-  const role  = sessionStorage.getItem('role');
-  if (email && role) {
-    const nav = document.getElementById('navLinks');
-    const dest = role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
-    nav.innerHTML = `
-      <span class="text-muted small-text">${email}</span>
-      <a href="${dest}" class="btn-nav-cta">My Dashboard</a>
-      <button class="logout-btn" onclick="sessionStorage.clear();location.reload();">Logout</button>`;
-  }
 </script>
+<script src="script.js"></script>
 </body>
 </html>

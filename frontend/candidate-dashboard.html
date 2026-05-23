@@ -10,13 +10,22 @@
 
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <div class="navbar-links">
-    <span id="navEmail" class="text-muted small-text"></span>
-    <button class="logout-btn" onclick="logout()">Logout</button>
-  </div>
+  <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
+    <span></span>
+    <span></span>
+    <span></span>
+  </button>
+  <div class="navbar-links" id="navLinks"></div>
 </nav>
 
 <div class="container-wide">
+  <div class="top-strip">
+    <p>Search the latest jobs in Bangladesh and apply with a single click.</p>
+    <div class="top-strip-links">
+      <a href="login.html">Login</a>
+      <a href="register.html">Register</a>
+    </div>
+  </div>
 
   <div class="dashboard-header page-header">
     <div>
@@ -89,6 +98,7 @@
 
 </div>
 
+<script src="script.js"></script>
 <script>
   const API = 'http://localhost:8080';
 
@@ -100,7 +110,7 @@
       window.location.href = 'login.html';
       return;
     }
-    document.getElementById('navEmail').textContent = email;
+    setupNavbar();
     document.getElementById('welcomeMsg').textContent = 'Welcome back, ' + email;
     loadAllJobs();
     loadMyApplications();
