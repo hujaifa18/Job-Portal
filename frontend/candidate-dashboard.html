@@ -178,13 +178,15 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `jobId=${jobId}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
+    .then(parseApiResponse)
     .then(data => {
-      if (data === 'Applied Successfully') {
-        alert('Applied successfully!');
+      if (data && data.message) {
+        alert(data.message);
         loadMyApplications();
+      } else if (data && data.error) {
+        alert(data.error);
       } else {
-        alert('You may have already applied for this job.');
+        alert('Failed to apply. Please try again.');
       }
     })
     .catch(err => alert('Error: ' + err));
@@ -231,10 +233,12 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `applicationId=${applicationId}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
+    .then(parseApiResponse)
     .then(data => {
-      if (data.includes('Withdrawn') || data.includes('withdrawn') || data.includes('success')) {
+      if (data && data.message) {
         loadMyApplications();
+      } else if (data && data.error) {
+        alert(data.error);
       } else {
         alert('Failed to withdraw application.');
       }
@@ -287,12 +291,14 @@
     formData.append('file', file);
 
     fetch(`${API}/upload-resume`, { method: 'POST', body: formData })
-    .then(res => res.text())
+    .then(parseApiResponse)
     .then(data => {
-      if (data.includes('successfully') || data.includes('Uploaded')) {
-        alert('Resume uploaded successfully!');
+      if (data && data.message) {
+        alert(data.message);
         fileInput.value = '';
         loadMyResumes();
+      } else if (data && data.error) {
+        alert(data.error);
       } else {
         alert('Failed to upload resume.');
       }
@@ -311,8 +317,16 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
-    .then(() => { loadMyResumes(); })
+    .then(parseApiResponse)
+    .then(data => {
+      if (data && data.message) {
+        loadMyResumes();
+      } else if (data && data.error) {
+        alert(data.error);
+      } else {
+        alert('Failed to set primary resume.');
+      }
+    })
     .catch(err => alert('Error: ' + err));
   }
 
@@ -324,10 +338,12 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
+    .then(parseApiResponse)
     .then(data => {
-      if (data.includes('Deleted') || data.includes('deleted') || data.includes('success')) {
+      if (data && data.message) {
         loadMyResumes();
+      } else if (data && data.error) {
+        alert(data.error);
       } else {
         alert('Failed to delete resume.');
       }

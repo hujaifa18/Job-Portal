@@ -105,15 +105,21 @@
     progressFill.style.width = '40%';
 
     fetch(`${API}/upload-resume`, { method: 'POST', body: formData })
-    .then(res => res.text())
-    .then(() => {
+    .then(res => res.json())
+    .then(data => {
       progressFill.style.width = '100%';
       setTimeout(() => {
         progressBar.style.display = 'none';
         progressFill.style.width = '0%';
-        showMessage('Resume uploaded successfully!', 'success');
-        fileInput.value = '';
-        loadResumes();
+        if (data && data.message) {
+          showMessage(data.message, 'success');
+          fileInput.value = '';
+          loadResumes();
+        } else if (data && data.error) {
+          showMessage(data.error, 'error');
+        } else {
+          showMessage('Resume upload failed.', 'error');
+        }
       }, 500);
     })
     .catch(err => {
@@ -164,8 +170,17 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
-    .then(() => { showMessage('Primary resume updated!', 'success'); loadResumes(); })
+    .then(res => res.json())
+    .then(data => {
+      if (data && data.message) {
+        showMessage('Primary resume updated!', 'success');
+        loadResumes();
+      } else if (data && data.error) {
+        showMessage(data.error, 'error');
+      } else {
+        showMessage('Failed to update primary resume.', 'error');
+      }
+    })
     .catch(err => showMessage('Error: ' + err.message, 'error'));
   }
 
@@ -181,10 +196,13 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
+    .then(res => res.json())
     .then(data => {
-      if (data.includes('Deleted') || data.includes('deleted')) {
-        showMessage('Resume deleted.', 'success'); loadResumes();
+      if (data && data.message) {
+        showMessage('Resume deleted.', 'success');
+        loadResumes();
+      } else if (data && data.error) {
+        showMessage(data.error, 'error');
       } else {
         showMessage('Failed to delete resume.', 'error');
       }

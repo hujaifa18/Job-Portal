@@ -214,17 +214,18 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&salary=${salary}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
+    .then(parseApiResponse)
     .then(data => {
-      if (data === 'Job Posted') {
+      if (data && data.message) {
         alert('Job posted successfully!');
         ['jobTitle','jobDescription','jobSalary','jobLocation','jobCompany'].forEach(id => document.getElementById(id).value = '');
         loadRecruiterJobs();
-        // Switch to posted-jobs tab
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
         document.getElementById('posted-jobs').classList.add('active');
         document.querySelector('.tab-button').classList.add('active');
+      } else if (data && data.error) {
+        alert(data.error);
       } else {
         alert('Failed to post job.');
       }
@@ -263,11 +264,13 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `jobId=${jobId}&title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&salary=${salary}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
+    .then(parseApiResponse)
     .then(data => {
-      if (data.includes('Updated') || data.includes('updated') || data.includes('success')) {
+      if (data && data.message) {
         closeEditModal();
         loadRecruiterJobs();
+      } else if (data && data.error) {
+        alert(data.error);
       } else {
         alert('Failed to update job.');
       }
@@ -289,10 +292,12 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `jobId=${jobId}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
+    .then(parseApiResponse)
     .then(data => {
-      if (data.includes('Deleted') || data.includes('deleted') || data.includes('success')) {
+      if (data && data.message) {
         loadRecruiterJobs();
+      } else if (data && data.error) {
+        alert(data.error);
       } else {
         alert('Failed to delete job.');
       }
@@ -303,9 +308,13 @@
   /* ── Applicants ── */
   function loadApplicantsForRecruiter() {
     const email = sessionStorage.getItem('email');
-    fetch(`${API}/recruiter-applicants?email=${encodeURIComponent(email)}`)
-    .then(res => res.json())
+    fetch(`${API}/applicants?email=${encodeURIComponent(email)}`)
+    .then(parseApiResponse)
     .then(data => {
+      if (!Array.isArray(data)) {
+        document.getElementById('applicantsList').innerHTML = '<p style="color:#fca5a5;">Error loading applicants.</p>';
+        return;
+      }
       document.getElementById('totalApplicants').textContent = data.length;
       if (!data.length) {
         document.getElementById('applicantsList').innerHTML =
@@ -343,10 +352,12 @@
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `applicationId=${applicationId}&status=${status}&email=${encodeURIComponent(email)}`
     })
-    .then(res => res.text())
+    .then(parseApiResponse)
     .then(data => {
-      if (data.includes('Updated') || data.includes('updated') || data.includes('success')) {
+      if (data && data.message) {
         loadApplicantsForRecruiter();
+      } else if (data && data.error) {
+        alert(data.error);
       } else {
         alert('Failed to update status.');
       }

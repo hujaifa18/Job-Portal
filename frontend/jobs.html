@@ -31,7 +31,20 @@
       <h2>Available Jobs</h2>
       <p class="text-muted small-text">Find your next opportunity</p>
     </div>
-    <button onclick="loadJobs()" class="btn-secondary">Refresh</button>
+    <button onclick="loadJobs();" class="btn-secondary">Refresh</button>
+  </div>
+
+  <div class="search-filter">
+    <div class="search-filter-grid">
+      <input type="text" id="searchKeyword" placeholder="Job title, company or keyword">
+      <input type="text" id="filterLocation" placeholder="Location">
+      <input type="number" id="filterMinSalary" placeholder="Min Salary ($)">
+      <input type="number" id="filterMaxSalary" placeholder="Max Salary ($)">
+    </div>
+    <div class="search-filter-actions">
+      <button onclick="searchJobs()">Search</button>
+      <button onclick="resetJobSearch()" class="btn-secondary">Reset</button>
+    </div>
   </div>
 
   <div id="jobList">
@@ -44,8 +57,19 @@
 
 <script src="script.js"></script>
 <script>
-  window.addEventListener('load', loadJobs);
   setupNavbar();
+  window.addEventListener('load', () => {
+    const params = getQueryParams();
+    if (params.keyword) document.getElementById('searchKeyword').value = params.keyword;
+    if (params.location) document.getElementById('filterLocation').value = params.location;
+    if (params.minSalary) document.getElementById('filterMinSalary').value = params.minSalary;
+    if (params.maxSalary) document.getElementById('filterMaxSalary').value = params.maxSalary;
+    if (params.keyword || params.location || params.minSalary || params.maxSalary) {
+      loadJobs(params);
+    } else {
+      loadJobs();
+    }
+  });
 </script>
 </body>
 </html>

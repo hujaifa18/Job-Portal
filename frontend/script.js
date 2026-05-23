@@ -186,37 +186,121 @@ function postJob() {
   .catch(() => showAlert('Failed to post job. Please try again.'));
 }
 
-function loadJobs() {
+function createJobCard(job) {
+  return `
+    <div class="card">
+      <h3>${job.title}</h3>
+      <p><span class="card-label">Company</span><br>${job.company}</p>
+      <p><span class="card-label">Location</span><br>${job.location}</p>
+      <p><span class="card-label">Salary</span><br></p>
+      <div class="salary-chip">$${parseFloat(job.salary).toLocaleString()} / yr</div>
+      <div style="margin-top:16px;">
+        <button onclick="applyJob(${job.id}, '${sessionStorage.getItem('email') || ''}')">Apply Now</button>
+      </div>
+    </div>`;
+}
+
+function loadJobs(params = {}) {
   const container = document.getElementById('jobList');
   if (!container) return;
   container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading jobs...</p>';
-  fetch(`${API}/jobs`)
+
+  let url = `${API}/jobs`;
+  const query = new URLSearchParams();
+  if (params.keyword) query.append('keyword', params.keyword);
+  if (params.location) query.append('location', params.location);
+  if (params.minSalary) query.append('minSalary', params.minSalary);
+  if (params.maxSalary) query.append('maxSalary', params.maxSalary);
+  if ([...query].length) url = `${API}/search?${query.toString()}`;
+
+  fetch(url)
     .then(parseApiResponse)
     .then(data => {
       if (!Array.isArray(data) || !data.length) {
         container.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><p>No jobs available at the moment.</p></div>`;
         return;
       }
-      container.innerHTML = '<div class="grid">' + data.map(job => `
-        <div class="card">
-          <h3>${job.title}</h3>
-          <p><span class="card-label">Company</span><br>${job.company}</p>
-          <p><span class="card-label">Location</span><br>${job.location}</p>
-          <p><span class="card-label">Salary</span><br></p>
-          <div class="salary-chip">$${parseFloat(job.salary).toLocaleString()} / yr</div>
-          <div style="margin-top:16px;">
-            <button onclick="applyJob(${job.id}, '${sessionStorage.getItem('email') || ''}')">Apply Now</button>
-          </div>
-        </div>`).join('') + '</div>';
+      container.innerHTML = '<div class="grid">' + data.map(createJobCard).join('') + '</div>';
     })
     .catch(() => { container.innerHTML = '<p style="color:#fca5a5;">Error loading jobs. Please try again.</p>'; });
+}
+
+function loadHomeJobs() {
+  const container = document.getElementById('homeJobs');
+  if (!container) return;
+  container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading featured jobs...</p>';
+  fetch(`${API}/jobs`)
+    .then(parseApiResponse)
+    .then(data => {
+      if (!Array.isArray(data) || !data.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><p>No featured jobs available right now.</p></div>`;
+        return;
+      }
+      const jobs = data.slice(0, 6);
+      container.innerHTML = '<div class="job-grid">' + jobs.map(job => `
+        <div class="job-card">
+          <div class="job-label">${job.location || 'Remote'}</div>
+          <h3>${job.title}</h3>
+          <p>${job.company} · ${job.location}</p>
+          <span class="salary-chip">৳${parseFloat(job.salary).toLocaleString()}</span>
+        </div>`).join('') + '</div>';
+    })
+    .catch(() => {
+      container.innerHTML = '<p style="color:#fca5a5;">Error loading featured jobs.</p>';
+    });
+}
+
+function getQueryParams() {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    keyword: params.get('keyword') || '',
+    location: params.get('location') || '',
+    minSalary: params.get('minSalary') || '',
+    maxSalary: params.get('maxSalary') || ''
+  };
+}
+
+function searchJobs() {
+  const keyword = document.getElementById('searchKeyword')?.value.trim() || '';
+  const location = document.getElementById('filterLocation')?.value.trim() || '';
+  const minSalary = document.getElementById('filterMinSalary')?.value.trim() || '';
+  const maxSalary = document.getElementById('filterMaxSalary')?.value.trim() || '';
+
+  loadJobs({ keyword, location, minSalary, maxSalary });
+  const query = new URLSearchParams();
+  if (keyword) query.append('keyword', keyword);
+  if (location) query.append('location', location);
+  if (minSalary) query.append('minSalary', minSalary);
+  if (maxSalary) query.append('maxSalary', maxSalary);
+  window.history.replaceState({}, '', `${window.location.pathname}?${query.toString()}`);
+}
+
+function resetJobSearch() {
+  const keywordInput = document.getElementById('searchKeyword');
+  const locationInput = document.getElementById('filterLocation');
+  const minSalaryInput = document.getElementById('filterMinSalary');
+  const maxSalaryInput = document.getElementById('filterMaxSalary');
+  if (keywordInput) keywordInput.value = '';
+  if (locationInput) locationInput.value = '';
+  if (minSalaryInput) minSalaryInput.value = '';
+  if (maxSalaryInput) maxSalaryInput.value = '';
+  loadJobs();
+  history.replaceState({}, '', window.location.pathname);
 }
 
 function loadApplicants() {
   const container = document.getElementById('list');
   if (!container) return;
+  const email = sessionStorage.getItem('email');
+  const role = sessionStorage.getItem('role');
+
+  if (!email || role !== 'RECRUITER') {
+    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🚫</div><p>Please login as a recruiter to view applicants.</p></div>`;
+    return;
+  }
+
   container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading applicants...</p>';
-  fetch(`${API}/applicants`)
+  fetch(`${API}/applicants?email=${encodeURIComponent(email)}`)
     .then(parseApiResponse)
     .then(data => {
       if (!Array.isArray(data) || !data.length) {

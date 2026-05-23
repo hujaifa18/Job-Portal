@@ -36,13 +36,13 @@
       <div class="hero-search">
         <div class="search-field">
           <label>Keyword</label>
-          <input type="text" placeholder="Job title, skill, company">
+          <input type="text" id="homeKeyword" placeholder="Job title, skill, company">
         </div>
         <div class="search-field">
           <label>Location</label>
-          <input type="text" placeholder="City or district">
+          <input type="text" id="homeLocation" placeholder="City or district">
         </div>
-        <button onclick="window.location.href='jobs.html'">Search Jobs</button>
+        <button onclick="searchFromHome()">Search Jobs</button>
       </div>
 
       <div class="hero-stats">
@@ -92,29 +92,21 @@
     <p>Latest vacancies posted across Bangladesh.</p>
   </div>
 
-  <div class="job-grid">
-    <div class="job-card">
-      <div class="job-label">Full Time</div>
-      <h3>Software Engineer</h3>
-      <p>Tech Company · Dhaka</p>
-      <span class="salary-chip">৳55,000</span>
-    </div>
-    <div class="job-card">
-      <div class="job-label">Part Time</div>
-      <h3>Customer Support</h3>
-      <p>Logistics · Chattogram</p>
-      <span class="salary-chip">৳18,000</span>
-    </div>
-    <div class="job-card">
-      <div class="job-label">Contract</div>
-      <h3>Graphic Designer</h3>
-      <p>Creative Studio · Sylhet</p>
-      <span class="salary-chip">৳22,000</span>
-    </div>
-  </div>
+  <div id="homeJobs"></div>
 </div>
 
 <script>
+  setupNavbar();
+  window.addEventListener('load', loadHomeJobs);
+
+  function searchFromHome() {
+    const keyword = document.getElementById('homeKeyword')?.value.trim() || '';
+    const location = document.getElementById('homeLocation')?.value.trim() || '';
+    const query = new URLSearchParams();
+    if (keyword) query.append('keyword', keyword);
+    if (location) query.append('location', location);
+    window.location.href = 'jobs.html' + (query.toString() ? `?${query.toString()}` : '');
+  }
 </script>
 <script src="script.js"></script>
 </body>
