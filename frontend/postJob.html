@@ -11,21 +11,20 @@
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
   <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span>
-    <span></span>
-    <span></span>
+    <span></span><span></span><span></span>
   </button>
   <div class="navbar-links" id="navLinks"></div>
 </nav>
 
 <div class="container">
   <div class="top-strip">
-    <p>Search the latest jobs in Bangladesh and apply with a single click.</p>
+    <p>Search the latest jobs in Bangladesh.</p>
     <div class="top-strip-links">
       <a href="login.html">Login</a>
       <a href="register.html">Register</a>
     </div>
   </div>
+
   <div class="section-heading">
     <h2>Post a New Job</h2>
     <p class="text-muted small-text">Fill in the details below to publish your job listing</p>
@@ -38,17 +37,17 @@
 
   <div class="form-group">
     <label for="description">Job Description</label>
-    <textarea id="description" placeholder="Describe responsibilities, requirements, and benefits..."></textarea>
+    <textarea id="description" placeholder="Describe responsibilities, requirements, and benefits…"></textarea>
   </div>
 
   <div class="form-row">
     <div class="form-group">
-      <label for="salary">Annual Salary ($)</label>
+      <label for="salary">Annual Salary (৳)</label>
       <input id="salary" type="number" placeholder="e.g., 80000">
     </div>
     <div class="form-group">
       <label for="location">Location</label>
-      <input id="location" type="text" placeholder="e.g., New York, NY">
+      <input id="location" type="text" placeholder="e.g., Dhaka">
     </div>
   </div>
 
@@ -57,40 +56,27 @@
     <input id="company" type="text" placeholder="Your company name">
   </div>
 
-  <!-- Email is hidden and auto-filled from session; shown as read-only if not logged in -->
+  <!-- BUG FIX: Hidden email field — auto-filled from session. Only shown if not logged in. -->
   <div class="form-group" id="emailGroup" style="display:none;">
     <label for="email">Recruiter Email</label>
     <input id="email" type="email" placeholder="recruiter@company.com">
   </div>
 
-  <button onclick="postJob()">Post Job</button>
+  <button onclick="postJob()" style="width:100%;">Post Job Listing</button>
 </div>
 
 <script src="script.js"></script>
 <script>
-  const email = sessionStorage.getItem('email');
-  const role  = sessionStorage.getItem('role');
-  const nav   = document.getElementById('navLinks');
+  const _email = sessionStorage.getItem('email');
+  const _role  = sessionStorage.getItem('role');
 
-  if (email && role === 'RECRUITER') {
-    // Pre-fill hidden email field from session
-    document.getElementById('email').value = email;
-    nav.innerHTML = `
-      <a href="index.html">Home</a>
-      <a href="recruiter-dashboard.html">Dashboard</a>
-      <span class="text-muted small-text">${email}</span>
-      <button class="logout-btn" onclick="logout()">Logout</button>`;
-  } else if (email && role === 'CANDIDATE') {
-    // Candidates shouldn't be here — redirect
-    alert('Only recruiters can post jobs.');
+  if (_email && _role === 'RECRUITER') {
+    document.getElementById('email').value = _email;
+  } else if (_email && _role === 'CANDIDATE') {
+    showAlert('Only recruiters can post jobs.');
     window.location.href = 'candidate-dashboard.html';
   } else {
-    // Not logged in — show email field manually
     document.getElementById('emailGroup').style.display = 'block';
-    nav.innerHTML = `
-      <a href="index.html">Home</a>
-      <a href="jobs.html">Browse Jobs</a>
-      <a href="login.html" class="btn-nav-cta">Login</a>`;
   }
 </script>
 </body>

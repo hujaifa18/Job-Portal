@@ -11,9 +11,7 @@
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
   <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span>
-    <span></span>
-    <span></span>
+    <span></span><span></span><span></span>
   </button>
   <div class="navbar-links" id="navLinks"></div>
 </nav>
@@ -31,7 +29,7 @@
     <div class="hero-copy">
       <div class="hero-kicker">Bangladesh job market</div>
       <h1>Find your next role and hire faster</h1>
-      <p>Discover curated openings, upload your resume, and connect with recruiters in one beautiful portal.</p>
+      <p>Discover curated openings, upload your resume, and connect with recruiters in one professional portal.</p>
 
       <div class="hero-search">
         <div class="search-field">
@@ -42,7 +40,7 @@
           <label>Location</label>
           <input type="text" id="homeLocation" placeholder="City or district">
         </div>
-        <button onclick="searchFromHome()">Search Jobs</button>
+        <button onclick="searchFromHome()">Search</button>
       </div>
 
       <div class="nav-buttons">
@@ -79,17 +77,17 @@
     <div class="feature-card">
       <div class="feature-icon">👤</div>
       <h3>Job Seeker</h3>
-      <p>Search jobs by title, company, or location and save your preferred listings.</p>
+      <p>Search jobs by title, company, or location and apply with a single click.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">📨</div>
       <h3>Easy Apply</h3>
-      <p>Upload your resume and apply in just a few clicks.</p>
+      <p>Upload your resume once and apply to multiple positions instantly.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">🏢</div>
       <h3>Recruiter</h3>
-      <p>Post jobs, review applications and manage hiring from your dashboard.</p>
+      <p>Post jobs, review applications, and manage your hiring pipeline.</p>
     </div>
   </div>
 
@@ -101,19 +99,19 @@
   <div id="homeJobs"></div>
 </div>
 
-<script>
-  setupNavbar();
-  window.addEventListener('load', loadHomeJobs);
-
-  function searchFromHome() {
-    const keyword = document.getElementById('homeKeyword')?.value.trim() || '';
-    const location = document.getElementById('homeLocation')?.value.trim() || '';
-    const query = new URLSearchParams();
-    if (keyword) query.append('keyword', keyword);
-    if (location) query.append('location', location);
-    window.location.href = 'jobs.html' + (query.toString() ? `?${query.toString()}` : '');
-  }
-</script>
+<!-- BUG FIX: script.js must load BEFORE calling setupNavbar.
+     The DOMContentLoaded listener in script.js handles navbar init automatically. -->
 <script src="script.js"></script>
+<script>
+  function searchFromHome() {
+    const keyword  = document.getElementById('homeKeyword')?.value.trim() || '';
+    const location = document.getElementById('homeLocation')?.value.trim() || '';
+    const query    = new URLSearchParams();
+    if (keyword)  query.append('keyword', keyword);
+    if (location) query.append('location', location);
+    window.location.href = 'jobs.html' + (query.toString() ? `?${query}` : '');
+  }
+  window.addEventListener('load', loadHomeJobs);
+</script>
 </body>
 </html>

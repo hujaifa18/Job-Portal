@@ -11,9 +11,7 @@
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
   <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span>
-    <span></span>
-    <span></span>
+    <span></span><span></span><span></span>
   </button>
   <div class="navbar-links" id="navLinks"></div>
 </nav>
@@ -26,20 +24,21 @@
       <a href="register.html">Register</a>
     </div>
   </div>
+
   <div class="page-header dashboard-header">
     <div>
       <h2>Available Jobs</h2>
       <p class="text-muted small-text">Find your next opportunity</p>
     </div>
-    <button onclick="loadJobs();" class="btn-secondary">Refresh</button>
+    <button onclick="loadJobs()" class="btn-secondary">Refresh</button>
   </div>
 
   <div class="search-filter">
     <div class="search-filter-grid">
-      <input type="text" id="searchKeyword" placeholder="Job title, company or keyword">
-      <input type="text" id="filterLocation" placeholder="Location">
-      <input type="number" id="filterMinSalary" placeholder="Min Salary ($)">
-      <input type="number" id="filterMaxSalary" placeholder="Max Salary ($)">
+      <input type="text"   id="searchKeyword"   placeholder="Job title, company or keyword">
+      <input type="text"   id="filterLocation"  placeholder="Location">
+      <input type="number" id="filterMinSalary" placeholder="Min Salary">
+      <input type="number" id="filterMaxSalary" placeholder="Max Salary">
     </div>
     <div class="search-filter-actions">
       <button onclick="searchJobs()">Search</button>
@@ -48,28 +47,22 @@
   </div>
 
   <div id="jobList">
-    <div class="empty-state">
-      <div class="empty-icon">💼</div>
-      <p>Loading jobs...</p>
-    </div>
+    <div class="loading-spinner"><div class="spinner"></div><p>Loading jobs…</p></div>
   </div>
 </div>
 
 <script src="script.js"></script>
 <script>
-  setupNavbar();
   window.addEventListener('load', () => {
     const params = getQueryParams();
-    if (params.keyword) document.getElementById('searchKeyword').value = params.keyword;
-    if (params.location) document.getElementById('filterLocation').value = params.location;
+    if (params.keyword)   document.getElementById('searchKeyword').value   = params.keyword;
+    if (params.location)  document.getElementById('filterLocation').value  = params.location;
     if (params.minSalary) document.getElementById('filterMinSalary').value = params.minSalary;
     if (params.maxSalary) document.getElementById('filterMaxSalary').value = params.maxSalary;
-    if (params.keyword || params.location || params.minSalary || params.maxSalary) {
-      loadJobs(params);
-    } else {
-      loadJobs();
-    }
+    loadJobs(Object.values(params).some(Boolean) ? params : {});
   });
+  // Allow Enter key to search
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') searchJobs(); });
 </script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Job Applicants — JobPortal</title>
+  <title>Applicants — JobPortal</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,9 +11,7 @@
 <nav class="navbar">
   <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
   <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span>
-    <span></span>
-    <span></span>
+    <span></span><span></span><span></span>
   </button>
   <div class="navbar-links" id="navLinks"></div>
 </nav>
@@ -26,25 +24,22 @@
       <a href="register.html">Register</a>
     </div>
   </div>
+
   <div class="page-header dashboard-header">
     <div>
       <h2>Job Applicants</h2>
-      <p class="text-muted small-text">All candidates who have applied</p>
+      <p class="text-muted small-text">All candidates who have applied for your listings</p>
     </div>
     <button onclick="loadApplicants()" class="btn-secondary">Refresh</button>
   </div>
 
   <div id="list">
-    <div class="empty-state">
-      <div class="empty-icon">👤</div>
-      <p>Loading applicants...</p>
-    </div>
+    <div class="loading-spinner"><div class="spinner"></div><p>Loading applicants…</p></div>
   </div>
 </div>
 
 <script src="script.js"></script>
 <script>
-  setupNavbar();
   window.addEventListener('load', loadApplicants);
 </script>
 </body>

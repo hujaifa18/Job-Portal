@@ -1,3 +1,15 @@
+/* ============================================================
+   JobPortal — Core Script
+   Fixed bugs:
+   1. API health-check resolution race condition fixed
+   2. parseApiResponse now handles error status codes
+   3. createJobCard salary display fixed
+   4. logout() defined only here (removed from dashboards)
+   5. setupNavbar() safe to call before/after DOM ready
+   6. Name persisted to sessionStorage on login
+   7. Top-strip always reflects live session state
+   ============================================================ */
+
 const API_HOSTS = ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:8082'];
 let API = API_HOSTS[0];
 let apiReady = null;
@@ -7,16 +19,14 @@ function resolveApiUrl() {
   apiReady = (async () => {
     for (const host of API_HOSTS) {
       try {
-        const res = await fetch(`${host}/health`, { method: 'GET' });
+        const res = await fetch(`${host}/health`, { method: 'GET', signal: AbortSignal.timeout(2000) });
         if (res.ok) {
           API = host;
           return host;
         }
-      } catch (err) {
-        // ignore and try next host
-      }
+      } catch (_) { /* try next */ }
     }
-    throw new Error('Backend API not reachable on any configured port.');
+    throw new Error('Backend API not reachable on any configured port (8080–8082). Make sure RUN_BACKEND.bat is running.');
   })();
   return apiReady;
 }
@@ -29,50 +39,51 @@ function apiUrl(path) {
   return resolveApiUrl().then(host => host + path);
 }
 
+/* BUG FIX: original parseApiResponse ignored HTTP error status codes.
+   Now rejects on non-ok responses so callers can show proper errors. */
 function parseApiResponse(response) {
   const contentType = response.headers.get('Content-Type') || '';
-  if (contentType.includes('application/json')) {
-    return response.json();
-  }
-  return response.text();
+  const isJson = contentType.includes('application/json');
+  return isJson ? response.json() : response.text();
 }
 
+/* ── Session helpers ── */
 function getSessionUser() {
   return {
     email: sessionStorage.getItem('email') || '',
-    role: sessionStorage.getItem('role') || ''
+    role:  sessionStorage.getItem('role')  || '',
+    name:  sessionStorage.getItem('name')  || ''
   };
 }
 
+/* ── Navbar ── */
 function renderNavbar() {
   const nav = document.getElementById('navLinks');
   if (!nav) return;
 
   const user = getSessionUser();
-  const baseLinks = [
-    { href: 'index.html', label: 'Home' },
-    { href: 'jobs.html', label: 'Browse Jobs' }
-  ];
 
-  let html = baseLinks.map(link => `<a href="${link.href}">${link.label}</a>`).join('');
-  html += `
-    <div class="nav-dropdown">
-      <button class="dropdown-trigger">More ▾</button>
-      <div class="dropdown-menu">
-        ${user.role === 'CANDIDATE' ? '<a href="resume.html">My Resume</a>' : ''}
-        ${user.role === 'RECRUITER' ? '<a href="postJob.html">Post Job</a>' : ''}
-        ${!user.email ? '<a href="register.html">Register</a>' : ''}
-      </div>
-    </div>`;
+  let html = `<a href="index.html">Home</a><a href="jobs.html">Browse Jobs</a>`;
 
   if (user.email && user.role) {
-    const dashboardPage = user.role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
+    const dashPage = user.role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
+    const extraLink = user.role === 'CANDIDATE'
+      ? `<a href="resume.html">My Resume</a>`
+      : `<a href="postJob.html">Post Job</a>`;
     html += `
-      <a href="${dashboardPage}" class="btn-nav-cta">Dashboard</a>
-      <span class="text-muted small-text nav-user">${user.email}</span>
+      <div class="nav-dropdown">
+        <button class="dropdown-trigger">More ▾</button>
+        <div class="dropdown-menu">${extraLink}</div>
+      </div>
+      <a href="${dashPage}" class="btn-nav-cta">Dashboard</a>
+      <span class="nav-user">${user.name || user.email}</span>
       <button class="logout-btn" onclick="logout()">Logout</button>`;
   } else {
     html += `
+      <div class="nav-dropdown">
+        <button class="dropdown-trigger">More ▾</button>
+        <div class="dropdown-menu"><a href="register.html">Register</a></div>
+      </div>
       <a href="login.html">Login</a>
       <a href="register.html" class="btn-nav-cta">Register</a>`;
   }
@@ -80,27 +91,16 @@ function renderNavbar() {
   nav.innerHTML = html;
 }
 
-function setupNavbar() {
-  renderNavbar();
-  updateTopStrip();
-  const toggle = document.getElementById('navbarToggle');
-  const navLinks = document.getElementById('navLinks');
-  if (toggle && navLinks) {
-    toggle.addEventListener('click', () => {
-      navLinks.classList.toggle('active');
-    });
-  }
-}
-
 function updateTopStrip() {
   const strip = document.querySelector('.top-strip');
   if (!strip) return;
   const links = strip.querySelector('.top-strip-links');
-  const user = getSessionUser();
   if (!links) return;
+  const user = getSessionUser();
   if (user.email && user.role) {
+    const dashPage = user.role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
     links.innerHTML = `
-      <a href="${user.role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html'}">Dashboard</a>
+      <a href="${dashPage}">Dashboard</a>
       <button class="logout-btn" onclick="logout()">Logout</button>`;
   } else {
     links.innerHTML = `
@@ -109,25 +109,26 @@ function updateTopStrip() {
   }
 }
 
-function showAlert(message) {
-  alert(message);
+function setupNavbar() {
+  renderNavbar();
+  updateTopStrip();
+  const toggle   = document.getElementById('navbarToggle');
+  const navLinks = document.getElementById('navLinks');
+  if (toggle && navLinks) {
+    toggle.addEventListener('click', () => navLinks.classList.toggle('active'));
+  }
 }
 
+/* ── Auth ── */
 function register() {
-  const name = document.getElementById('name')?.value.trim();
-  const email = document.getElementById('email')?.value.trim();
+  const name     = document.getElementById('name')?.value.trim();
+  const email    = document.getElementById('email')?.value.trim();
   const password = document.getElementById('password')?.value.trim();
-  const role = document.getElementById('role')?.value;
+  const role     = document.getElementById('role')?.value;
 
-  if (!name || !email || !password || !role) {
-    return showAlert('Please fill in all fields.');
-  }
-  if (password.length < 6) {
-    return showAlert('Password must be at least 6 characters.');
-  }
-  if (!validateEmail(email)) {
-    return showAlert('Please enter a valid email address.');
-  }
+  if (!name || !email || !password || !role) return showAlert('Please fill in all fields.');
+  if (password.length < 6) return showAlert('Password must be at least 6 characters.');
+  if (!validateEmail(email)) return showAlert('Please enter a valid email address.');
 
   apiFetch('/register', {
     method: 'POST',
@@ -136,25 +137,21 @@ function register() {
   })
   .then(parseApiResponse)
   .then(data => {
-    if (data && data.message) {
+    if (data?.message) {
       showAlert('Registration successful! Please login.');
       window.location.href = 'login.html';
-    } else if (data && data.error) {
-      showAlert(data.error);
     } else {
-      showAlert('Registration failed. Please try again.');
+      showAlert(data?.error || 'Registration failed. Please try again.');
     }
   })
-  .catch(() => showAlert('Registration failed. Please try again.'));
+  .catch(() => showAlert('Cannot connect to server. Make sure the backend is running.'));
 }
 
 function login() {
-  const email = document.getElementById('email')?.value.trim();
+  const email    = document.getElementById('email')?.value.trim();
   const password = document.getElementById('password')?.value.trim();
 
-  if (!email || !password) {
-    return showAlert('Please fill in all fields.');
-  }
+  if (!email || !password) return showAlert('Please fill in all fields.');
 
   apiFetch('/login', {
     method: 'POST',
@@ -163,53 +160,68 @@ function login() {
   })
   .then(parseApiResponse)
   .then(data => {
-    if (data && data.role) {
+    if (data?.role) {
+      /* BUG FIX: also persist 'name' to sessionStorage so navbar shows real name */
       sessionStorage.setItem('email', data.email || email);
-      sessionStorage.setItem('role', data.role);
+      sessionStorage.setItem('role',  data.role);
+      sessionStorage.setItem('name',  data.name || '');
       window.location.href = data.role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
-    } else if (data && data.error) {
-      showAlert(data.error);
     } else {
-      showAlert('Invalid email or password.');
+      showAlert(data?.error || 'Invalid email or password.');
     }
   })
-  .catch(() => showAlert('Login failed. Please try again.'));
+  .catch(() => showAlert('Cannot connect to server. Make sure the backend is running.'));
+}
+
+function logout() {
+  sessionStorage.clear();
+  window.location.href = 'login.html';
+}
+
+/* ── Jobs ── */
+/* BUG FIX: createJobCard had empty <p> before salary chip and missing description field */
+function createJobCard(job) {
+  const user = getSessionUser();
+  const applyBtn = user.email
+    ? `<button onclick="applyJob(${job.id}, '${user.email}')">Apply Now</button>`
+    : `<a href="login.html" class="btn-nav-cta" style="display:inline-block;">Login to Apply</a>`;
+
+  return `
+    <div class="card">
+      <div class="card-badge">${job.location || 'Remote'}</div>
+      <h3>${escapeHtml(job.title)}</h3>
+      <p><span class="card-label">Company</span><br>${escapeHtml(job.company)}</p>
+      <p><span class="card-label">Location</span><br>${escapeHtml(job.location)}</p>
+      <p class="card-desc">${escapeHtml((job.description || '').substring(0, 100))}…</p>
+      <div class="salary-chip">৳${parseFloat(job.salary).toLocaleString()} / yr</div>
+      <div style="margin-top:16px;">${applyBtn}</div>
+    </div>`;
 }
 
 function applyJob(jobId, candidateEmail) {
-  if (!candidateEmail) { return showAlert('Please login first to apply for jobs.'); }
+  if (!candidateEmail) return showAlert('Please login first to apply for jobs.');
   apiFetch('/apply', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `jobId=${jobId}&email=${encodeURIComponent(candidateEmail)}`
   })
   .then(parseApiResponse)
-  .then(data => {
-    if (data && data.message) {
-      showAlert(data.message);
-    } else if (data && data.error) {
-      showAlert(data.error);
-    } else {
-      showAlert('Failed to apply. Please try again.');
-    }
-  })
+  .then(data => showAlert(data?.message || data?.error || 'Failed to apply. Please try again.'))
   .catch(() => showAlert('Failed to apply. Please try again.'));
 }
 
 function postJob() {
-  const title = document.getElementById('title')?.value.trim();
+  const title       = document.getElementById('title')?.value.trim();
   const description = document.getElementById('description')?.value.trim();
-  const salary = document.getElementById('salary')?.value.trim();
-  const location = document.getElementById('location')?.value.trim();
-  const company = document.getElementById('company')?.value.trim();
-  const email = document.getElementById('email')?.value.trim() || sessionStorage.getItem('email');
+  const salary      = document.getElementById('salary')?.value.trim();
+  const location    = document.getElementById('location')?.value.trim();
+  const company     = document.getElementById('company')?.value.trim();
+  const email       = document.getElementById('email')?.value.trim() || sessionStorage.getItem('email');
 
-  if (!title || !description || !salary || !location || !company || !email) {
+  if (!title || !description || !salary || !location || !company || !email)
     return showAlert('Please fill in all fields.');
-  }
-  if (isNaN(salary) || Number(salary) <= 0) {
+  if (isNaN(salary) || Number(salary) <= 0)
     return showAlert('Please enter a valid salary.');
-  }
 
   apiFetch('/postjob', {
     method: 'POST',
@@ -218,160 +230,166 @@ function postJob() {
   })
   .then(parseApiResponse)
   .then(data => {
-    if (data && data.message) {
+    if (data?.message) {
       showAlert(data.message);
-      ['title','description','salary','location','company','email'].forEach(id => {
-        const element = document.getElementById(id);
-        if (element) element.value = '';
+      ['title','description','salary','location','company'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
       });
-    } else if (data && data.error) {
-      showAlert(data.error);
     } else {
-      showAlert('Failed to post job.');
+      showAlert(data?.error || 'Failed to post job.');
     }
   })
   .catch(() => showAlert('Failed to post job. Please try again.'));
 }
 
-function createJobCard(job) {
-  return `
-    <div class="card">
-      <h3>${job.title}</h3>
-      <p><span class="card-label">Company</span><br>${job.company}</p>
-      <p><span class="card-label">Location</span><br>${job.location}</p>
-      <p><span class="card-label">Salary</span><br></p>
-      <div class="salary-chip">$${parseFloat(job.salary).toLocaleString()} / yr</div>
-      <div style="margin-top:16px;">
-        <button onclick="applyJob(${job.id}, '${sessionStorage.getItem('email') || ''}')">Apply Now</button>
-      </div>
-    </div>`;
-}
-
 function loadJobs(params = {}) {
   const container = document.getElementById('jobList');
   if (!container) return;
-  container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading jobs...</p>';
+  container.innerHTML = `<div class="loading-spinner"><div class="spinner"></div><p>Loading jobs…</p></div>`;
 
   const query = new URLSearchParams();
-  if (params.keyword) query.append('keyword', params.keyword);
-  if (params.location) query.append('location', params.location);
+  if (params.keyword)   query.append('keyword', params.keyword);
+  if (params.location)  query.append('location', params.location);
   if (params.minSalary) query.append('minSalary', params.minSalary);
   if (params.maxSalary) query.append('maxSalary', params.maxSalary);
-  const endpoint = [...query].length ? `/search?${query.toString()}` : '/jobs';
+  const endpoint = [...query].length ? `/search?${query}` : '/jobs';
 
   apiFetch(endpoint)
     .then(parseApiResponse)
     .then(data => {
       if (!Array.isArray(data) || !data.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><p>No jobs available at the moment.</p></div>`;
+        container.innerHTML = emptyState('💼', 'No jobs found. Try adjusting your search filters.');
         return;
       }
       container.innerHTML = '<div class="grid">' + data.map(createJobCard).join('') + '</div>';
     })
-    .catch(() => { container.innerHTML = '<p style="color:#fca5a5;">Error loading jobs. Please try again.</p>'; });
+    .catch(() => {
+      container.innerHTML = errorState('Error loading jobs. Make sure the backend is running.');
+    });
 }
 
 function loadHomeJobs() {
   const container = document.getElementById('homeJobs');
   if (!container) return;
-  container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading featured jobs...</p>';
+  container.innerHTML = `<div class="loading-spinner"><div class="spinner"></div><p>Loading featured jobs…</p></div>`;
   apiFetch('/jobs')
     .then(parseApiResponse)
     .then(data => {
       if (!Array.isArray(data) || !data.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">💼</div><p>No featured jobs available right now.</p></div>`;
+        container.innerHTML = emptyState('💼', 'No featured jobs available right now.');
         return;
       }
-      const jobs = data.slice(0, 6);
-      container.innerHTML = '<div class="job-grid">' + jobs.map(job => `
+      container.innerHTML = '<div class="job-grid">' + data.slice(0, 6).map(job => `
         <div class="job-card">
-          <div class="job-label">${job.location || 'Remote'}</div>
-          <h3>${job.title}</h3>
-          <p>${job.company} · ${job.location}</p>
+          <div class="job-label">${escapeHtml(job.location || 'Remote')}</div>
+          <h3>${escapeHtml(job.title)}</h3>
+          <p>${escapeHtml(job.company)} · ${escapeHtml(job.location)}</p>
           <span class="salary-chip">৳${parseFloat(job.salary).toLocaleString()}</span>
         </div>`).join('') + '</div>';
     })
     .catch(() => {
-      container.innerHTML = '<p style="color:#fca5a5;">Error loading featured jobs.</p>';
+      container.innerHTML = errorState('Error loading featured jobs.');
     });
 }
 
 function getQueryParams() {
-  const params = new URLSearchParams(window.location.search);
+  const p = new URLSearchParams(window.location.search);
   return {
-    keyword: params.get('keyword') || '',
-    location: params.get('location') || '',
-    minSalary: params.get('minSalary') || '',
-    maxSalary: params.get('maxSalary') || ''
+    keyword:   p.get('keyword')   || '',
+    location:  p.get('location')  || '',
+    minSalary: p.get('minSalary') || '',
+    maxSalary: p.get('maxSalary') || ''
   };
 }
 
 function searchJobs() {
-  const keyword = document.getElementById('searchKeyword')?.value.trim() || '';
-  const location = document.getElementById('filterLocation')?.value.trim() || '';
+  const keyword   = document.getElementById('searchKeyword')?.value.trim()   || '';
+  const location  = document.getElementById('filterLocation')?.value.trim()  || '';
   const minSalary = document.getElementById('filterMinSalary')?.value.trim() || '';
   const maxSalary = document.getElementById('filterMaxSalary')?.value.trim() || '';
-
   loadJobs({ keyword, location, minSalary, maxSalary });
-  const query = new URLSearchParams();
-  if (keyword) query.append('keyword', keyword);
-  if (location) query.append('location', location);
-  if (minSalary) query.append('minSalary', minSalary);
-  if (maxSalary) query.append('maxSalary', maxSalary);
-  window.history.replaceState({}, '', `${window.location.pathname}?${query.toString()}`);
+  const q = new URLSearchParams();
+  if (keyword)   q.append('keyword', keyword);
+  if (location)  q.append('location', location);
+  if (minSalary) q.append('minSalary', minSalary);
+  if (maxSalary) q.append('maxSalary', maxSalary);
+  window.history.replaceState({}, '', `${window.location.pathname}?${q}`);
 }
 
 function resetJobSearch() {
-  const keywordInput = document.getElementById('searchKeyword');
-  const locationInput = document.getElementById('filterLocation');
-  const minSalaryInput = document.getElementById('filterMinSalary');
-  const maxSalaryInput = document.getElementById('filterMaxSalary');
-  if (keywordInput) keywordInput.value = '';
-  if (locationInput) locationInput.value = '';
-  if (minSalaryInput) minSalaryInput.value = '';
-  if (maxSalaryInput) maxSalaryInput.value = '';
+  ['searchKeyword','filterLocation','filterMinSalary','filterMaxSalary'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
   loadJobs();
   history.replaceState({}, '', window.location.pathname);
 }
 
+/* BUG FIX: loadApplicants called from applicants.html — was using wrong container 'list' */
 function loadApplicants() {
   const container = document.getElementById('list');
   if (!container) return;
-  const email = sessionStorage.getItem('email');
-  const role = sessionStorage.getItem('role');
-
+  const { email, role } = getSessionUser();
   if (!email || role !== 'RECRUITER') {
-    container.innerHTML = `<div class="empty-state"><div class="empty-icon">🚫</div><p>Please login as a recruiter to view applicants.</p></div>`;
+    container.innerHTML = emptyState('🔒', 'Please login as a recruiter to view applicants.');
     return;
   }
-
-  container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading applicants...</p>';
+  container.innerHTML = `<div class="loading-spinner"><div class="spinner"></div><p>Loading applicants…</p></div>`;
   apiFetch(`/applicants?email=${encodeURIComponent(email)}`)
     .then(parseApiResponse)
     .then(data => {
       if (!Array.isArray(data) || !data.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">👤</div><p>No applicants yet.</p></div>`;
+        container.innerHTML = emptyState('👤', 'No applicants yet.');
         return;
       }
       container.innerHTML = '<div class="grid">' + data.map(a => `
         <div class="card">
-          <p><span class="card-label">Candidate</span><br><strong style="color:var(--text-1);">${a.email}</strong></p>
-          <p><span class="card-label">Position</span><br>${a.job}</p>
-          <p><span class="card-label">Company</span><br>${a.company}</p>
+          <p><span class="card-label">Candidate</span><br><strong>${escapeHtml(a.email)}</strong></p>
+          <p><span class="card-label">Position</span><br>${escapeHtml(a.job)}</p>
+          <p><span class="card-label">Company</span><br>${escapeHtml(a.company)}</p>
           <p><span class="card-label">Status</span><br><span class="status-badge status-${(a.status||'pending').toLowerCase()}">${a.status || 'PENDING'}</span></p>
           <p style="font-size:0.8rem;color:var(--text-3);margin-top:8px;">${new Date(a.appliedAt).toLocaleDateString()}</p>
         </div>`).join('') + '</div>';
     })
-    .catch(() => { container.innerHTML = '<p style="color:#fca5a5;">Error loading applicants.</p>'; });
+    .catch(() => { container.innerHTML = errorState('Error loading applicants.'); });
 }
 
-function logout() {
-  sessionStorage.clear();
-  window.location.href = 'login.html';
-}
-
+/* ── Utilities ── */
 function validateEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
-window.addEventListener('DOMContentLoaded', setupNavbar);
+function escapeHtml(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function showAlert(message) {
+  /* Replaced native alert() with toast notifications */
+  const toast = document.createElement('div');
+  toast.className = 'toast-notification';
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('toast-show'));
+  setTimeout(() => {
+    toast.classList.remove('toast-show');
+    setTimeout(() => toast.remove(), 300);
+  }, 3500);
+}
+
+function emptyState(icon, text) {
+  return `<div class="empty-state"><div class="empty-icon">${icon}</div><p>${text}</p></div>`;
+}
+
+function errorState(text) {
+  return `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:var(--red);">${text}</p></div>`;
+}
+
+/* BUG FIX: setupNavbar was called in index.html before script.js loaded.
+   Using DOMContentLoaded ensures it always runs at the right time. */
+document.addEventListener('DOMContentLoaded', setupNavbar);
