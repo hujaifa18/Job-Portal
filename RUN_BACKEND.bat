@@ -15,7 +15,7 @@ echo [1/2] Compiling Java files...
 echo.
 
 REM Compile
-javac -d bin -cp "lib/*:src" src/util/DBConnection.java src/model/*.java src/dao/*.java src/service/*.java src/server/Server.java
+javac -d bin -cp "lib/*;src" src/util/DBConnection.java src/model/*.java src/dao/*.java src/service/*.java src/server/Server.java
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

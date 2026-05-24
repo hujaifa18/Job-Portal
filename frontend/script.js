@@ -1,4 +1,33 @@
-const API = 'http://localhost:8080';
+const API_HOSTS = ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:8082'];
+let API = API_HOSTS[0];
+let apiReady = null;
+
+function resolveApiUrl() {
+  if (apiReady) return apiReady;
+  apiReady = (async () => {
+    for (const host of API_HOSTS) {
+      try {
+        const res = await fetch(`${host}/health`, { method: 'GET' });
+        if (res.ok) {
+          API = host;
+          return host;
+        }
+      } catch (err) {
+        // ignore and try next host
+      }
+    }
+    throw new Error('Backend API not reachable on any configured port.');
+  })();
+  return apiReady;
+}
+
+function apiFetch(path, options = {}) {
+  return resolveApiUrl().then(host => fetch(`${host}${path}`, options));
+}
+
+function apiUrl(path) {
+  return resolveApiUrl().then(host => host + path);
+}
 
 function parseApiResponse(response) {
   const contentType = response.headers.get('Content-Type') || '';
@@ -53,12 +82,30 @@ function renderNavbar() {
 
 function setupNavbar() {
   renderNavbar();
+  updateTopStrip();
   const toggle = document.getElementById('navbarToggle');
   const navLinks = document.getElementById('navLinks');
   if (toggle && navLinks) {
     toggle.addEventListener('click', () => {
       navLinks.classList.toggle('active');
     });
+  }
+}
+
+function updateTopStrip() {
+  const strip = document.querySelector('.top-strip');
+  if (!strip) return;
+  const links = strip.querySelector('.top-strip-links');
+  const user = getSessionUser();
+  if (!links) return;
+  if (user.email && user.role) {
+    links.innerHTML = `
+      <a href="${user.role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html'}">Dashboard</a>
+      <button class="logout-btn" onclick="logout()">Logout</button>`;
+  } else {
+    links.innerHTML = `
+      <a href="login.html">Login</a>
+      <a href="register.html">Register</a>`;
   }
 }
 
@@ -82,7 +129,7 @@ function register() {
     return showAlert('Please enter a valid email address.');
   }
 
-  fetch(`${API}/register`, {
+  apiFetch('/register', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&role=${encodeURIComponent(role)}`
@@ -109,7 +156,7 @@ function login() {
     return showAlert('Please fill in all fields.');
   }
 
-  fetch(`${API}/login`, {
+  apiFetch('/login', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
@@ -131,7 +178,7 @@ function login() {
 
 function applyJob(jobId, candidateEmail) {
   if (!candidateEmail) { return showAlert('Please login first to apply for jobs.'); }
-  fetch(`${API}/apply`, {
+  apiFetch('/apply', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `jobId=${jobId}&email=${encodeURIComponent(candidateEmail)}`
@@ -164,7 +211,7 @@ function postJob() {
     return showAlert('Please enter a valid salary.');
   }
 
-  fetch(`${API}/postjob`, {
+  apiFetch('/postjob', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: `title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&salary=${salary}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&email=${encodeURIComponent(email)}`
@@ -205,15 +252,14 @@ function loadJobs(params = {}) {
   if (!container) return;
   container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading jobs...</p>';
 
-  let url = `${API}/jobs`;
   const query = new URLSearchParams();
   if (params.keyword) query.append('keyword', params.keyword);
   if (params.location) query.append('location', params.location);
   if (params.minSalary) query.append('minSalary', params.minSalary);
   if (params.maxSalary) query.append('maxSalary', params.maxSalary);
-  if ([...query].length) url = `${API}/search?${query.toString()}`;
+  const endpoint = [...query].length ? `/search?${query.toString()}` : '/jobs';
 
-  fetch(url)
+  apiFetch(endpoint)
     .then(parseApiResponse)
     .then(data => {
       if (!Array.isArray(data) || !data.length) {
@@ -229,7 +275,7 @@ function loadHomeJobs() {
   const container = document.getElementById('homeJobs');
   if (!container) return;
   container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading featured jobs...</p>';
-  fetch(`${API}/jobs`)
+  apiFetch('/jobs')
     .then(parseApiResponse)
     .then(data => {
       if (!Array.isArray(data) || !data.length) {
@@ -300,7 +346,7 @@ function loadApplicants() {
   }
 
   container.innerHTML = '<p class="text-muted small-text" style="padding:20px;">Loading applicants...</p>';
-  fetch(`${API}/applicants?email=${encodeURIComponent(email)}`)
+  apiFetch(`/applicants?email=${encodeURIComponent(email)}`)
     .then(parseApiResponse)
     .then(data => {
       if (!Array.isArray(data) || !data.length) {

@@ -46,7 +46,7 @@ public class Server {
     // ========================= MAIN =========================
     public static void main(String[] args) throws Exception {
 
-        HttpServer server = HttpServer.create(new InetSocketAddress(8080), 0);
+        HttpServer server = createServer();
         // Thread pool so concurrent requests don't block each other
         server.setExecutor(Executors.newFixedThreadPool(20));
 
@@ -705,7 +705,25 @@ public class Server {
         }).getFilters().add(new CorsFilter());
 
         server.start();
-        System.out.println("Server running at http://localhost:8080");
+        System.out.println("Server running at http://localhost:" + server.getAddress().getPort());
+    }
+
+    private static HttpServer createServer() throws IOException {
+        int[] ports = {8080, 8081, 8082};
+        IOException lastException = null;
+
+        for (int port : ports) {
+            try {
+                HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+                System.out.println("Started backend on port " + port);
+                return server;
+            } catch (IOException e) {
+                lastException = e;
+                System.out.println("Port " + port + " unavailable: " + e.getMessage());
+            }
+        }
+
+        throw lastException != null ? lastException : new IOException("Unable to bind server to any configured port");
     }
 
     // ========================= HELPERS =========================

@@ -57,8 +57,6 @@
 </div>
 
 <script>
-  const API = 'http://localhost:8080';
-
   // Nav setup
   const _email = sessionStorage.getItem('email');
   const _role  = sessionStorage.getItem('role');
@@ -104,7 +102,7 @@
     progressBar.style.display = 'block';
     progressFill.style.width = '40%';
 
-    fetch(`${API}/upload-resume`, { method: 'POST', body: formData })
+    apiFetch('/upload-resume', { method: 'POST', body: formData })
     .then(res => res.json())
     .then(data => {
       progressFill.style.width = '100%';
@@ -131,7 +129,7 @@
   function loadResumes() {
     const email = sessionStorage.getItem('email');
     if (!email) { showMessage('Please login first to view resumes.', 'error'); return; }
-    fetch(`${API}/resumes?email=${encodeURIComponent(email)}`)
+    apiFetch(`/resumes?email=${encodeURIComponent(email)}`)
     .then(res => res.json())
     .then(data => {
       if (!data.length) {
@@ -165,7 +163,7 @@
 
   function setAsDefault(resumeId) {
     const email = sessionStorage.getItem('email');
-    fetch(`${API}/set-primary-resume`, {
+    apiFetch('/set-primary-resume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
@@ -185,13 +183,13 @@
   }
 
   function downloadResume(resumeId) {
-    window.open(`${API}/download-resume?id=${resumeId}`, '_blank');
+    apiUrl(`/download-resume?id=${resumeId}`).then(url => window.open(url, '_blank'));
   }
 
   function deleteResume(resumeId) {
     if (!confirm('Delete this resume?')) return;
     const email = sessionStorage.getItem('email');
-    fetch(`${API}/delete-resume`, {
+    apiFetch('/delete-resume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`

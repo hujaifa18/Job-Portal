@@ -34,6 +34,8 @@
     </div>
   </div>
 
+  <div class="dashboard-summary" id="candidateSummary"></div>
+
   <div class="dashboard-nav">
     <button class="tab-button active" onclick="switchTab(event,'find-jobs')">Find Jobs</button>
     <button class="tab-button" onclick="switchTab(event,'my-applications')">My Applications</button>
@@ -58,6 +60,12 @@
         <button onclick="loadAllJobs()" class="btn-secondary">Reset</button>
       </div>
     </div>
+
+    <div class="section-heading">
+      <h2>Recommended Jobs for You</h2>
+      <p class="text-muted small-text">Jobs based on your current activity and recent openings.</p>
+    </div>
+    <div id="recommendedJobs" class="recommendation-grid"></div>
     <div id="jobsList"></div>
   </div>
 
@@ -70,6 +78,7 @@
       </div>
       <button onclick="loadMyApplications()" class="btn-secondary">Refresh</button>
     </div>
+    <div class="status-chart" id="applicationStatusChart"></div>
     <div id="applicationsList"></div>
   </div>
 
@@ -100,8 +109,6 @@
 
 <script src="script.js"></script>
 <script>
-  const API = 'http://localhost:8080';
-
   document.addEventListener('DOMContentLoaded', function() {
     const email = sessionStorage.getItem('email');
     const role  = sessionStorage.getItem('role');
@@ -115,6 +122,8 @@
     loadAllJobs();
     loadMyApplications();
     loadMyResumes();
+    loadCandidateSummary();
+    loadRecommendedJobs();
   });
 
   function switchTab(event, tabName) {
@@ -127,8 +136,8 @@
   /* ── Jobs ── */
   function loadAllJobs() {
     document.getElementById('jobsList').innerHTML = '<p class="text-muted small-text">Loading jobs...</p>';
-    fetch(`${API}/jobs`)
-    .then(res => res.json())
+    apiFetch('/jobs')
+    .then(parseApiResponse)
     .then(data => displayJobs(data))
     .catch(() => { document.getElementById('jobsList').innerHTML = '<p style="color:#fca5a5;">Error loading jobs.</p>'; });
   }
@@ -145,8 +154,8 @@
     if (minSalary) params.append('minSalary', minSalary);
     if (maxSalary) params.append('maxSalary', maxSalary);
 
-    fetch(`${API}/search?${params.toString()}`)
-    .then(res => res.json())
+    apiFetch(`/search?${params.toString()}`)
+    .then(parseApiResponse)
     .then(data => displayJobs(data))
     .catch(() => { document.getElementById('jobsList').innerHTML = '<p style="color:#fca5a5;">Error searching jobs.</p>'; });
   }
@@ -173,7 +182,7 @@
 
   function applyJobFromDashboard(jobId) {
     const email = sessionStorage.getItem('email');
-    fetch(`${API}/apply`, {
+    apiFetch('/apply', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `jobId=${jobId}&email=${encodeURIComponent(email)}`
@@ -183,6 +192,8 @@
       if (data && data.message) {
         alert(data.message);
         loadMyApplications();
+        loadCandidateSummary();
+        loadRecommendedJobs();
       } else if (data && data.error) {
         alert(data.error);
       } else {
@@ -195,8 +206,8 @@
   /* ── Applications ── */
   function loadMyApplications() {
     const email = sessionStorage.getItem('email');
-    fetch(`${API}/my-applications?email=${encodeURIComponent(email)}`)
-    .then(res => res.json())
+    apiFetch(`/my-applications?email=${encodeURIComponent(email)}`)
+    .then(parseApiResponse)
     .then(data => {
       if (!data.length) {
         document.getElementById('applicationsList').innerHTML =
@@ -225,10 +236,127 @@
     .catch(() => { document.getElementById('applicationsList').innerHTML = '<p style="color:#fca5a5;">Error loading applications.</p>'; });
   }
 
+  function loadCandidateSummary() {
+    const email = sessionStorage.getItem('email');
+    if (!email) return;
+
+    Promise.all([
+      apiFetch(`/my-applications?email=${encodeURIComponent(email)}`).then(res => res.ok ? res.json() : []),
+      apiFetch(`/resumes?email=${encodeURIComponent(email)}`).then(res => res.ok ? res.json() : [])
+    ])
+    .then(([applications, resumes]) => {
+      const total = applications.length;
+      const accepted = applications.filter(a => (a.status || '').toLowerCase() === 'accepted').length;
+      const rejected = applications.filter(a => (a.status || '').toLowerCase() === 'rejected').length;
+      const pending = applications.filter(a => (a.status || '').toLowerCase() === 'pending').length;
+      const primaryCount = resumes.filter(r => r.isPrimary).length;
+      const maxCount = Math.max(1, total, accepted, rejected, pending);
+
+      document.getElementById('candidateSummary').innerHTML = `
+        <div class="summary-card-grid">
+          <div class="summary-card">
+            <span class="summary-label">Applications</span>
+            <strong>${total}</strong>
+            <p class="text-muted">Total jobs you've applied to</p>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Resumes</span>
+            <strong>${resumes.length}</strong>
+            <p class="text-muted">${primaryCount ? primaryCount + ' primary resume' : 'Upload a resume to apply faster'}</p>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Offers</span>
+            <strong>${accepted}</strong>
+            <p class="text-muted">Offers received so far</p>
+          </div>
+          <div class="summary-card">
+            <span class="summary-label">Pending</span>
+            <strong>${pending}</strong>
+            <p class="text-muted">Applications still under review</p>
+          </div>
+        </div>
+      `;
+
+      document.getElementById('applicationStatusChart').innerHTML = `
+        <h3>Status Summary</h3>
+        <div class="status-chart-row">
+          <div class="status-segment">
+            <span>Pending</span>
+            <span>${pending}</span>
+            <div class="status-bar"><span class="status-bar-fill status-pending" style="width:${Math.round((pending / maxCount) * 100)}%"></span></div>
+          </div>
+          <div class="status-segment">
+            <span>Accepted</span>
+            <span>${accepted}</span>
+            <div class="status-bar"><span class="status-bar-fill status-accepted" style="width:${Math.round((accepted / maxCount) * 100)}%"></span></div>
+          </div>
+          <div class="status-segment">
+            <span>Rejected</span>
+            <span>${rejected}</span>
+            <div class="status-bar"><span class="status-bar-fill status-rejected" style="width:${Math.round((rejected / maxCount) * 100)}%"></span></div>
+          </div>
+        </div>
+      `;
+    })
+    .catch(() => {
+      document.getElementById('candidateSummary').innerHTML = '';
+      document.getElementById('applicationStatusChart').innerHTML = '<p class="text-muted">Unable to load summary content.</p>';
+    });
+  }
+
+  function loadRecommendedJobs() {
+    const email = sessionStorage.getItem('email');
+    if (!email) return;
+
+    Promise.all([
+      apiFetch('/jobs').then(res => res.ok ? res.json() : []),
+      apiFetch(`/my-applications?email=${encodeURIComponent(email)}`).then(res => res.ok ? res.json() : [])
+    ])
+    .then(([jobs, applications]) => {
+      const appliedIds = new Set(applications.map(a => Number(a.jobId)));
+      const recommended = jobs
+        .filter(job => !appliedIds.has(Number(job.id)))
+        .map(job => ({
+          ...job,
+          applicantCount: Number(job.applicantCount || 0),
+          score: Number(job.applicantCount || 0) * 18 + (Number(job.salary || 0) / 1200)
+        }))
+        .sort((a, b) => b.score - a.score || b.applicantCount - a.applicantCount)
+        .slice(0, 4);
+
+      const container = document.getElementById('recommendedJobs');
+      if (!recommended.length) {
+        container.innerHTML = `<div class="empty-state"><div class="empty-icon">✨</div><p>No new recommendations right now. Check back later.</p></div>`;
+        return;
+      }
+
+      container.innerHTML = recommended.map(job => {
+        const label = job.applicantCount > 15 ? 'Hot' : job.applicantCount > 0 ? 'Trending' : 'Recommended';
+        const applicantText = job.applicantCount > 0 ? ` · ${job.applicantCount} applicant${job.applicantCount === 1 ? '' : 's'}` : '';
+        return `
+          <div class="recommendation-card">
+            <div>
+              <div class="job-label">${label}</div>
+              <h3>${job.title}</h3>
+              <p class="text-muted">${job.company} · ${job.location}${applicantText}</p>
+              <p>${job.description.substring(0, 120)}...</p>
+            </div>
+            <div class="recommendation-footer">
+              <span class="salary-chip">$${parseFloat(job.salary).toLocaleString()} / yr</span>
+              <button onclick="applyJobFromDashboard(${job.id})">Apply</button>
+            </div>
+          </div>`;
+      }).join('');
+    })
+    .catch(() => {
+      document.getElementById('recommendedJobs').innerHTML = '<p class="text-muted">Unable to load recommendations.</p>';
+    });
+  }
+
   function withdrawApplication(applicationId) {
     if (!confirm('Withdraw this application?')) return;
     const email = sessionStorage.getItem('email');
-    fetch(`${API}/withdraw`, {
+    apiFetch('/withdraw', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `applicationId=${applicationId}&email=${encodeURIComponent(email)}`
@@ -237,6 +365,8 @@
     .then(data => {
       if (data && data.message) {
         loadMyApplications();
+        loadCandidateSummary();
+        loadRecommendedJobs();
       } else if (data && data.error) {
         alert(data.error);
       } else {
@@ -249,8 +379,8 @@
   /* ── Resumes ── */
   function loadMyResumes() {
     const email = sessionStorage.getItem('email');
-    fetch(`${API}/resumes?email=${encodeURIComponent(email)}`)
-    .then(res => res.json())
+    apiFetch(`/resumes?email=${encodeURIComponent(email)}`)
+    .then(parseApiResponse)
     .then(data => {
       if (!data.length) {
         document.getElementById('resumesList').innerHTML =
@@ -290,7 +420,7 @@
     formData.append('email', email);
     formData.append('file', file);
 
-    fetch(`${API}/upload-resume`, { method: 'POST', body: formData })
+    apiFetch('/upload-resume', { method: 'POST', body: formData })
     .then(parseApiResponse)
     .then(data => {
       if (data && data.message) {
@@ -307,12 +437,12 @@
   }
 
   function downloadResume(resumeId) {
-    window.open(`${API}/download-resume?id=${resumeId}`, '_blank');
+    apiUrl(`/download-resume?id=${resumeId}`).then(url => window.open(url, '_blank'));
   }
 
   function setPrimaryResume(resumeId) {
     const email = sessionStorage.getItem('email');
-    fetch(`${API}/set-primary-resume`, {
+    apiFetch('/set-primary-resume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
@@ -333,7 +463,7 @@
   function deleteResumeFile(resumeId) {
     if (!confirm('Delete this resume?')) return;
     const email = sessionStorage.getItem('email');
-    fetch(`${API}/delete-resume`, {
+    apiFetch('/delete-resume', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
