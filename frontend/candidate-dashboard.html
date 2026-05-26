@@ -3,487 +3,260 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Candidate Dashboard — JobPortal</title>
+  <title>Dashboard — JobPortal</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main class="main">
 
-<nav class="navbar">
-  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span>
-    <span></span>
-    <span></span>
-  </button>
-  <div class="navbar-links" id="navLinks"></div>
-</nav>
-
-<div class="container-wide">
-  <div class="top-strip">
-    <p>Search the latest jobs in Bangladesh and apply with a single click.</p>
-    <div class="top-strip-links">
-      <a href="login.html">Login</a>
-      <a href="register.html">Register</a>
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+        <div class="topbar-title">
+          <h1 id="welcomeH">Dashboard</h1>
+          <p>Track your applications and discover new opportunities</p>
+        </div>
+      </div>
     </div>
-  </div>
 
-  <div class="dashboard-header page-header">
-    <div>
-      <h2>Candidate Dashboard</h2>
-      <p class="text-muted small-text" id="welcomeMsg">Welcome back!</p>
+    <!-- Stats -->
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="sw(event,'find-jobs')">Find Jobs</button>
+      <button class="tab-btn" onclick="sw(event,'applications')">My Applications</button>
+      <button class="tab-btn" onclick="sw(event,'resume-tab')">Resume</button>
     </div>
-  </div>
 
-  <div class="dashboard-summary" id="candidateSummary"></div>
-
-  <div class="dashboard-nav">
-    <button class="tab-button active" onclick="switchTab(event,'find-jobs')">Find Jobs</button>
-    <button class="tab-button" onclick="switchTab(event,'my-applications')">My Applications</button>
-    <button class="tab-button" onclick="switchTab(event,'my-resume')">My Resume</button>
-  </div>
-
-  <!-- Tab 1: Find Jobs -->
-  <div id="find-jobs" class="tab-content active">
-    <div class="section-heading">
-      <h2>Find Jobs</h2>
-      <p class="text-muted small-text">Search and filter through available opportunities</p>
-    </div>
-    <div class="search-filter">
-      <div class="search-filter-grid">
-        <input type="text"   id="searchKeyword"   placeholder="Job title, skill, keyword...">
+    <!-- Find Jobs -->
+    <div id="find-jobs" class="tab-pane active">
+      <div class="filter-bar" style="margin-bottom:18px">
+        <input type="text"   id="searchKeyword"   placeholder="Title, skill or company…">
         <input type="text"   id="filterLocation"  placeholder="Location">
-        <input type="number" id="filterMinSalary" placeholder="Min Salary ($)">
-        <input type="number" id="filterMaxSalary" placeholder="Max Salary ($)">
+        <input type="number" id="filterMinSalary" placeholder="Min salary (৳)">
+        <input type="number" id="filterMaxSalary" placeholder="Max salary (৳)">
+        <div class="filter-actions" style="grid-column:1/-1">
+          <button onclick="doSearch()">Search</button>
+          <button class="btn-secondary" onclick="resetAndLoad()">Reset</button>
+        </div>
       </div>
-      <div class="search-filter-actions">
-        <button onclick="searchAndFilter()">Search</button>
-        <button onclick="loadAllJobs()" class="btn-secondary">Reset</button>
+      <div id="jobsList"></div>
+    </div>
+
+    <!-- Applications -->
+    <div id="applications" class="tab-pane">
+      <div class="section-head">
+        <div><h2>My Applications</h2><p>Status of every application you submitted</p></div>
+        <button class="btn-secondary btn-sm" onclick="loadApps()">↺ Refresh</button>
       </div>
+      <div id="appsList"></div>
     </div>
 
-    <div class="section-heading">
-      <h2>Recommended Jobs for You</h2>
-      <p class="text-muted small-text">Jobs based on your current activity and recent openings.</p>
-    </div>
-    <div id="recommendedJobs" class="recommendation-grid"></div>
-    <div id="jobsList"></div>
-  </div>
-
-  <!-- Tab 2: My Applications -->
-  <div id="my-applications" class="tab-content">
-    <div class="section-heading dashboard-header">
-      <div>
-        <h2>My Applications</h2>
-        <p class="text-muted small-text">Track the status of your job applications</p>
+    <!-- Resume -->
+    <div id="resume-tab" class="tab-pane">
+      <div class="section-head mb-4">
+        <div><h2>My Resume</h2><p>Upload and manage your CV files</p></div>
+        <button class="btn-secondary btn-sm" onclick="loadRes()">↺ Refresh</button>
       </div>
-      <button onclick="loadMyApplications()" class="btn-secondary">Refresh</button>
-    </div>
-    <div class="status-chart" id="applicationStatusChart"></div>
-    <div id="applicationsList"></div>
-  </div>
-
-  <!-- Tab 3: My Resume -->
-  <div id="my-resume" class="tab-content">
-    <div class="section-heading">
-      <h2>My Resume</h2>
-      <p class="text-muted small-text">Upload and manage your resume files</p>
-    </div>
-
-    <div class="section-block">
-      <h3>Upload New Resume</h3>
-      <p class="text-muted small-text" style="margin-bottom:14px;">PDF only · Max 5MB</p>
-      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-        <input type="file" id="resumeFile" accept=".pdf" style="flex:1;min-width:200px;">
-        <button onclick="uploadResume()" class="btn-secondary" style="width:auto;">Upload</button>
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-zone-icon">📤</div>
+        <p style="font-weight:600;margin-bottom:4px;color:var(--t1)">Click to upload or drag & drop</p>
+        <p class="text-sm text-muted">PDF only · Max 5MB</p>
+        <input type="file" id="fileInput" accept=".pdf" style="display:none">
       </div>
+      <div id="resList"></div>
     </div>
-
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-      <h3>Uploaded Resumes</h3>
-      <button onclick="loadMyResumes()" class="btn-secondary btn-sm">Refresh</button>
-    </div>
-    <div id="resumesList"></div>
-  </div>
-
+  </main>
 </div>
 
 <script src="script.js"></script>
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const email = sessionStorage.getItem('email');
-    const role  = sessionStorage.getItem('role');
-    if (!email || role !== 'CANDIDATE') {
-      alert('Please login as a candidate.');
-      window.location.href = 'login.html';
-      return;
-    }
-    setupNavbar();
-    document.getElementById('welcomeMsg').textContent = 'Welcome back, ' + email;
-    loadAllJobs();
-    loadMyApplications();
-    loadMyResumes();
-    loadCandidateSummary();
-    loadRecommendedJobs();
+  const _u=getUser();
+  if(!_u.email||_u.role!=='CANDIDATE') location.href='login.html';
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    buildSidebar('dashboard');
+    document.getElementById('welcomeH').textContent=`Welcome back, ${(_u.name||_u.email).split(' ')[0]}!`;
+    loadStats(); loadAllJobs(); setupUpload();
   });
 
-  function switchTab(event, tabName) {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
+  /* ── Tab switcher ── */
+  function sw(e,id){
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    e.currentTarget.classList.add('active');
+    if(id==='applications') loadApps();
+    if(id==='resume-tab')   loadRes();
+  }
+
+  /* ── Stats ── */
+  function loadStats(){
+    Promise.all([
+      apiFetch(`/my-applications?email=${enc(_u.email)}`).then(r=>r.ok?r.json():[]),
+      apiFetch(`/resumes?email=${enc(_u.email)}`).then(r=>r.ok?r.json():[])
+    ]).then(([apps,resumes])=>{
+      const pend=apps.filter(a=>(a.status||'').toLowerCase()==='pending').length;
+      const acc =apps.filter(a=>(a.status||'').toLowerCase()==='accepted').length;
+      document.getElementById('statsRow').innerHTML=`
+        <div class="stat-card gold">
+          <div class="stat-label">Total Applied</div>
+          <div class="stat-num">${apps.length}</div>
+          <div class="stat-sub">Applications submitted</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending</div>
+          <div class="stat-num" style="color:var(--amber)">${pend}</div>
+          <div class="stat-sub">Awaiting response</div>
+          ${pend>0?'<span class="stat-trend up">↑ Active</span>':''}
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Accepted</div>
+          <div class="stat-num" style="color:var(--green)">${acc}</div>
+          <div class="stat-sub">Successful applications</div>
+          ${acc>0?'<span class="stat-trend up">✓ Hired</span>':''}
+        </div>
+        <div class="stat-card dark">
+          <div class="stat-label">Resumes</div>
+          <div class="stat-num">${resumes.length}</div>
+          <div class="stat-sub">Files uploaded</div>
+        </div>`;
+    }).catch(()=>{});
   }
 
   /* ── Jobs ── */
-  function loadAllJobs() {
-    document.getElementById('jobsList').innerHTML = '<p class="text-muted small-text">Loading jobs...</p>';
-    apiFetch('/jobs')
-    .then(parseApiResponse)
-    .then(data => displayJobs(data))
-    .catch(() => { document.getElementById('jobsList').innerHTML = '<p style="color:#fca5a5;">Error loading jobs.</p>'; });
+  function loadAllJobs(){
+    const c=document.getElementById('jobsList'); showSkeleton(c,6);
+    apiFetch('/jobs').then(r=>r.json()).then(data=>{
+      if(!data.length){c.innerHTML=empty('💼','No jobs found.');return;}
+      c.innerHTML=`<div class="grid-3">${data.map(jobCardWithApply).join('')}</div>`;
+    }).catch(()=>{c.innerHTML=empty('⚠️','Start the backend to see jobs.');});
   }
 
-  function searchAndFilter() {
-    const keyword   = document.getElementById('searchKeyword').value.trim();
-    const location  = document.getElementById('filterLocation').value.trim();
-    const minSalary = document.getElementById('filterMinSalary').value;
-    const maxSalary = document.getElementById('filterMaxSalary').value;
-
-    let params = new URLSearchParams();
-    if (keyword)   params.append('keyword',   keyword);
-    if (location)  params.append('location',  location);
-    if (minSalary) params.append('minSalary', minSalary);
-    if (maxSalary) params.append('maxSalary', maxSalary);
-
-    apiFetch(`/search?${params.toString()}`)
-    .then(parseApiResponse)
-    .then(data => displayJobs(data))
-    .catch(() => { document.getElementById('jobsList').innerHTML = '<p style="color:#fca5a5;">Error searching jobs.</p>'; });
+  function doSearch(){
+    const c=document.getElementById('jobsList'); showSkeleton(c,6);
+    const q=new URLSearchParams();
+    const kw=v('searchKeyword'),loc=v('filterLocation'),mn=v('filterMinSalary'),mx=v('filterMaxSalary');
+    if(kw)q.append('keyword',kw);if(loc)q.append('location',loc);
+    if(mn)q.append('minSalary',mn);if(mx)q.append('maxSalary',mx);
+    apiFetch([...q].length?`/search?${q}`:'/jobs').then(r=>r.json()).then(data=>{
+      if(!data.length){c.innerHTML=empty('💼','No jobs found.');return;}
+      c.innerHTML=`<div class="grid-3">${data.map(jobCardWithApply).join('')}</div>`;
+    }).catch(()=>{c.innerHTML=empty('⚠️','Error.');});
   }
 
-  function displayJobs(jobs) {
-    if (!jobs.length) {
-      document.getElementById('jobsList').innerHTML =
-        `<div class="empty-state"><div class="empty-icon">🔍</div><p>No jobs found matching your criteria.</p></div>`;
-      return;
-    }
-    document.getElementById('jobsList').innerHTML = '<div class="grid">' +
-      jobs.map(job => `
-        <div class="card">
-          <h3>${job.title}</h3>
-          <p><span class="card-label">Company</span><br>${job.company}</p>
-          <p><span class="card-label">Location</span><br>${job.location}</p>
-          <p><span class="card-label">Description</span><br>${job.description.substring(0,120)}...</p>
-          <div class="salary-chip">$${parseFloat(job.salary).toLocaleString()} / yr</div>
-          <div style="margin-top:16px;">
-            <button onclick="applyJobFromDashboard(${job.id})">Apply Now</button>
-          </div>
-        </div>`).join('') + '</div>';
+  function resetAndLoad(){
+    ['searchKeyword','filterLocation','filterMinSalary','filterMaxSalary'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    loadAllJobs();
   }
 
-  function applyJobFromDashboard(jobId) {
-    const email = sessionStorage.getItem('email');
-    apiFetch('/apply', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `jobId=${jobId}&email=${encodeURIComponent(email)}`
-    })
-    .then(parseApiResponse)
-    .then(data => {
-      if (data && data.message) {
-        alert(data.message);
-        loadMyApplications();
-        loadCandidateSummary();
-        loadRecommendedJobs();
-      } else if (data && data.error) {
-        alert(data.error);
-      } else {
-        alert('Failed to apply. Please try again.');
-      }
-    })
-    .catch(err => alert('Error: ' + err));
+  function jobCardWithApply(job){
+    const salary=parseFloat(job.salary||0).toLocaleString();
+    return `<div class="job-card">
+      <div class="job-card-head">
+        <div>
+          <div class="job-card-title">${esc(job.title)}</div>
+          <div class="job-card-company">${esc(job.company)}</div>
+        </div>
+        <span class="chip chip-gold">৳${salary}</span>
+      </div>
+      <div class="job-card-meta">
+        <span class="chip chip-gray">📍 ${esc(job.location)}</span>
+        <span class="chip chip-teal">Full-time</span>
+      </div>
+      <p class="text-sm text-muted" style="line-height:1.55">${esc((job.description||'').substring(0,110))}…</p>
+      <div class="job-card-footer">
+        <span class="text-muted text-sm">${job.applicantCount||0} applicant${job.applicantCount==1?'':'s'}</span>
+        <button class="btn-sm" onclick="quickApply(${job.id})">Apply Now</button>
+      </div>
+    </div>`;
+  }
+
+  function quickApply(jobId){
+    apiFetch('/apply',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`jobId=${jobId}&email=${enc(_u.email)}`})
+      .then(parseResp).then(d=>{toast(d?.message||d?.error||'Failed.',d?.message?'success':'error');if(d?.message)loadStats();})
+      .catch(()=>toast('Failed.','error'));
   }
 
   /* ── Applications ── */
-  function loadMyApplications() {
-    const email = sessionStorage.getItem('email');
-    apiFetch(`/my-applications?email=${encodeURIComponent(email)}`)
-    .then(parseApiResponse)
-    .then(data => {
-      if (!data.length) {
-        document.getElementById('applicationsList').innerHTML =
-          `<div class="empty-state"><div class="empty-icon">📋</div><p>You haven't applied for any jobs yet.</p></div>`;
-        return;
-      }
-      document.getElementById('applicationsList').innerHTML = data.map(app => {
-        const s = (app.status || 'PENDING').toLowerCase();
-        const statusClass = s === 'accepted' ? 'status-accepted' : s === 'rejected' ? 'status-rejected' : 'status-pending';
-        return `
-          <div class="application-item">
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
-              <div>
-                <h3>${app.job}</h3>
-                <p><span class="card-label">Company</span> ${app.company}</p>
-                <p><span class="card-label">Applied</span> ${new Date(app.appliedAt).toLocaleDateString()}</p>
-              </div>
-              <span class="status-badge ${statusClass}">${app.status || 'PENDING'}</span>
-            </div>
-            <div style="margin-top:14px;">
-              <button class="btn-danger btn-sm" onclick="withdrawApplication(${app.id})">Withdraw</button>
-            </div>
-          </div>`;
+  function loadApps(){
+    const c=document.getElementById('appsList'); showLoading(c);
+    apiFetch(`/my-applications?email=${enc(_u.email)}`).then(r=>r.json()).then(data=>{
+      if(!data.length){c.innerHTML=empty('📋','No applications yet. Browse jobs and apply!');return;}
+      c.innerHTML=data.map(a=>{
+        const s=(a.status||'pending').toLowerCase();
+        return `<div class="app-row">
+          <div class="app-row-info">
+            <h3>${esc(a.job)}</h3>
+            <p>${esc(a.company)} · Applied ${new Date(a.appliedAt).toLocaleDateString()}</p>
+          </div>
+          <div class="app-row-right">
+            <span class="badge badge-${s}">${a.status||'PENDING'}</span>
+            <button class="btn-ghost btn-sm" onclick="withdraw(${a.id})">Withdraw</button>
+          </div>
+        </div>`;
       }).join('');
-    })
-    .catch(() => { document.getElementById('applicationsList').innerHTML = '<p style="color:#fca5a5;">Error loading applications.</p>'; });
+    }).catch(()=>{c.innerHTML=empty('⚠️','Error loading applications.');});
   }
 
-  function loadCandidateSummary() {
-    const email = sessionStorage.getItem('email');
-    if (!email) return;
+  function withdraw(id){
+    if(!confirm('Withdraw this application?'))return;
+    apiFetch('/withdraw',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`applicationId=${id}&email=${enc(_u.email)}`})
+      .then(parseResp).then(d=>{if(d?.message){loadApps();loadStats();}else toast(d?.error||'Failed.','error');}).catch(()=>toast('Failed.','error'));
+  }
 
-    Promise.all([
-      apiFetch(`/my-applications?email=${encodeURIComponent(email)}`).then(res => res.ok ? res.json() : []),
-      apiFetch(`/resumes?email=${encodeURIComponent(email)}`).then(res => res.ok ? res.json() : [])
-    ])
-    .then(([applications, resumes]) => {
-      const total = applications.length;
-      const accepted = applications.filter(a => (a.status || '').toLowerCase() === 'accepted').length;
-      const rejected = applications.filter(a => (a.status || '').toLowerCase() === 'rejected').length;
-      const pending = applications.filter(a => (a.status || '').toLowerCase() === 'pending').length;
-      const primaryCount = resumes.filter(r => r.isPrimary).length;
-      const maxCount = Math.max(1, total, accepted, rejected, pending);
+  /* ── Resume tab ── */
+  function setupUpload(){
+    const zone=document.getElementById('uploadZone');
+    const inp =document.getElementById('fileInput');
+    if(!zone||!inp)return;
+    inp.addEventListener('change',()=>{if(inp.files[0])doUpload(inp.files[0]);});
+    zone.addEventListener('dragover',e=>{e.preventDefault();zone.style.borderColor='var(--gold)';});
+    zone.addEventListener('dragleave',()=>zone.style.borderColor='');
+    zone.addEventListener('drop',e=>{e.preventDefault();zone.style.borderColor='';if(e.dataTransfer.files[0])doUpload(e.dataTransfer.files[0]);});
+  }
 
-      document.getElementById('candidateSummary').innerHTML = `
-        <div class="summary-card-grid">
-          <div class="summary-card">
-            <span class="summary-label">Applications</span>
-            <strong>${total}</strong>
-            <p class="text-muted">Total jobs you've applied to</p>
+  function doUpload(file){
+    if(!file.name.toLowerCase().endsWith('.pdf'))return toast('PDF only.','error');
+    if(file.size>5*1024*1024)return toast('Max 5MB.','error');
+    const fd=new FormData(); fd.append('email',_u.email); fd.append('file',file);
+    apiFetch('/upload-resume',{method:'POST',body:fd}).then(parseResp)
+      .then(d=>{toast(d?.message||d?.error||'Failed.',d?.message?'success':'error');if(d?.message){document.getElementById('fileInput').value='';loadRes();loadStats();}})
+      .catch(()=>toast('Upload failed.','error'));
+  }
+
+  function loadRes(){
+    const c=document.getElementById('resList'); if(!c)return;
+    showLoading(c);
+    apiFetch(`/resumes?email=${enc(_u.email)}`).then(parseResp).then(data=>{
+      if(!data.length){c.innerHTML=empty('📄','No resumes yet.');return;}
+      c.innerHTML=data.map(r=>`
+        <div class="resume-row">
+          <div class="resume-icon">📄</div>
+          <div class="resume-info">
+            <h3>${esc(r.fileName)} ${r.isPrimary?'<span class="badge badge-gold">Primary</span>':''}</h3>
+            <p>${(r.fileSize/1024).toFixed(1)} KB · ${new Date(r.uploadedAt).toLocaleDateString()}</p>
           </div>
-          <div class="summary-card">
-            <span class="summary-label">Resumes</span>
-            <strong>${resumes.length}</strong>
-            <p class="text-muted">${primaryCount ? primaryCount + ' primary resume' : 'Upload a resume to apply faster'}</p>
+          <div class="resume-actions">
+            <button class="btn-secondary btn-sm" onclick="apiUrl('/download-resume?id=${r.id}').then(u=>window.open(u,'_blank'))">Download</button>
+            ${!r.isPrimary?`<button class="btn-ghost btn-sm" onclick="setPrim(${r.id})">Set Primary</button>`:''}
+            <button class="btn-danger btn-sm" onclick="delR(${r.id})">Delete</button>
           </div>
-          <div class="summary-card">
-            <span class="summary-label">Offers</span>
-            <strong>${accepted}</strong>
-            <p class="text-muted">Offers received so far</p>
-          </div>
-          <div class="summary-card">
-            <span class="summary-label">Pending</span>
-            <strong>${pending}</strong>
-            <p class="text-muted">Applications still under review</p>
-          </div>
-        </div>
-      `;
-
-      document.getElementById('applicationStatusChart').innerHTML = `
-        <h3>Status Summary</h3>
-        <div class="status-chart-row">
-          <div class="status-segment">
-            <span>Pending</span>
-            <span>${pending}</span>
-            <div class="status-bar"><span class="status-bar-fill status-pending" style="width:${Math.round((pending / maxCount) * 100)}%"></span></div>
-          </div>
-          <div class="status-segment">
-            <span>Accepted</span>
-            <span>${accepted}</span>
-            <div class="status-bar"><span class="status-bar-fill status-accepted" style="width:${Math.round((accepted / maxCount) * 100)}%"></span></div>
-          </div>
-          <div class="status-segment">
-            <span>Rejected</span>
-            <span>${rejected}</span>
-            <div class="status-bar"><span class="status-bar-fill status-rejected" style="width:${Math.round((rejected / maxCount) * 100)}%"></span></div>
-          </div>
-        </div>
-      `;
-    })
-    .catch(() => {
-      document.getElementById('candidateSummary').innerHTML = '';
-      document.getElementById('applicationStatusChart').innerHTML = '<p class="text-muted">Unable to load summary content.</p>';
-    });
+        </div>`).join('');
+    }).catch(()=>{c.innerHTML=empty('⚠️','Error.');});
   }
 
-  function loadRecommendedJobs() {
-    const email = sessionStorage.getItem('email');
-    if (!email) return;
-
-    Promise.all([
-      apiFetch('/jobs').then(res => res.ok ? res.json() : []),
-      apiFetch(`/my-applications?email=${encodeURIComponent(email)}`).then(res => res.ok ? res.json() : [])
-    ])
-    .then(([jobs, applications]) => {
-      const appliedIds = new Set(applications.map(a => Number(a.jobId)));
-      const recommended = jobs
-        .filter(job => !appliedIds.has(Number(job.id)))
-        .map(job => ({
-          ...job,
-          applicantCount: Number(job.applicantCount || 0),
-          score: Number(job.applicantCount || 0) * 18 + (Number(job.salary || 0) / 1200)
-        }))
-        .sort((a, b) => b.score - a.score || b.applicantCount - a.applicantCount)
-        .slice(0, 4);
-
-      const container = document.getElementById('recommendedJobs');
-      if (!recommended.length) {
-        container.innerHTML = `<div class="empty-state"><div class="empty-icon">✨</div><p>No new recommendations right now. Check back later.</p></div>`;
-        return;
-      }
-
-      container.innerHTML = recommended.map(job => {
-        const label = job.applicantCount > 15 ? 'Hot' : job.applicantCount > 0 ? 'Trending' : 'Recommended';
-        const applicantText = job.applicantCount > 0 ? ` · ${job.applicantCount} applicant${job.applicantCount === 1 ? '' : 's'}` : '';
-        return `
-          <div class="recommendation-card">
-            <div>
-              <div class="job-label">${label}</div>
-              <h3>${job.title}</h3>
-              <p class="text-muted">${job.company} · ${job.location}${applicantText}</p>
-              <p>${job.description.substring(0, 120)}...</p>
-            </div>
-            <div class="recommendation-footer">
-              <span class="salary-chip">$${parseFloat(job.salary).toLocaleString()} / yr</span>
-              <button onclick="applyJobFromDashboard(${job.id})">Apply</button>
-            </div>
-          </div>`;
-      }).join('');
-    })
-    .catch(() => {
-      document.getElementById('recommendedJobs').innerHTML = '<p class="text-muted">Unable to load recommendations.</p>';
-    });
+  function setPrim(id){
+    apiFetch('/set-primary-resume',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`resumeId=${id}&email=${enc(_u.email)}`})
+      .then(parseResp).then(d=>{if(d?.message)loadRes();else toast(d?.error||'Failed.','error');});
   }
-
-  function withdrawApplication(applicationId) {
-    if (!confirm('Withdraw this application?')) return;
-    const email = sessionStorage.getItem('email');
-    apiFetch('/withdraw', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `applicationId=${applicationId}&email=${encodeURIComponent(email)}`
-    })
-    .then(parseApiResponse)
-    .then(data => {
-      if (data && data.message) {
-        loadMyApplications();
-        loadCandidateSummary();
-        loadRecommendedJobs();
-      } else if (data && data.error) {
-        alert(data.error);
-      } else {
-        alert('Failed to withdraw application.');
-      }
-    })
-    .catch(err => alert('Error: ' + err));
-  }
-
-  /* ── Resumes ── */
-  function loadMyResumes() {
-    const email = sessionStorage.getItem('email');
-    apiFetch(`/resumes?email=${encodeURIComponent(email)}`)
-    .then(parseApiResponse)
-    .then(data => {
-      if (!data.length) {
-        document.getElementById('resumesList').innerHTML =
-          `<div class="empty-state"><div class="empty-icon">📄</div><p>No resumes uploaded yet.</p></div>`;
-        return;
-      }
-      document.getElementById('resumesList').innerHTML = data.map(resume => {
-        const primaryBadge = resume.isPrimary ? '<span class="primary-badge">Primary</span>' : '';
-        const setPrimaryBtn = !resume.isPrimary
-          ? `<button class="btn-ghost btn-sm" onclick="setPrimaryResume(${resume.id})">Set as Primary</button>` : '';
-        return `
-          <div class="resume-item">
-            <div class="resume-info">
-              <h3>📄 ${resume.fileName} ${primaryBadge}</h3>
-              <p>${(resume.fileSize / 1024).toFixed(2)} KB · Uploaded ${new Date(resume.uploadedAt).toLocaleDateString()}</p>
-            </div>
-            <div class="resume-buttons">
-              <button class="btn-secondary btn-sm" onclick="downloadResume(${resume.id})">Download</button>
-              ${setPrimaryBtn}
-              <button class="btn-danger btn-sm" onclick="deleteResumeFile(${resume.id})">Delete</button>
-            </div>
-          </div>`;
-      }).join('');
-    })
-    .catch(() => { document.getElementById('resumesList').innerHTML = '<p style="color:#fca5a5;">Error loading resumes.</p>'; });
-  }
-
-  function uploadResume() {
-    const fileInput = document.getElementById('resumeFile');
-    const file = fileInput.files[0];
-    const email = sessionStorage.getItem('email');
-    if (!file) { alert('Please select a file first.'); return; }
-    if (!file.name.toLowerCase().endsWith('.pdf')) { alert('Please upload a PDF file only.'); return; }
-    if (file.size > 5 * 1024 * 1024) { alert('File size must be less than 5MB.'); return; }
-
-    const formData = new FormData();
-    formData.append('email', email);
-    formData.append('file', file);
-
-    apiFetch('/upload-resume', { method: 'POST', body: formData })
-    .then(parseApiResponse)
-    .then(data => {
-      if (data && data.message) {
-        alert(data.message);
-        fileInput.value = '';
-        loadMyResumes();
-      } else if (data && data.error) {
-        alert(data.error);
-      } else {
-        alert('Failed to upload resume.');
-      }
-    })
-    .catch(err => alert('Error: ' + err));
-  }
-
-  function downloadResume(resumeId) {
-    apiUrl(`/download-resume?id=${resumeId}`).then(url => window.open(url, '_blank'));
-  }
-
-  function setPrimaryResume(resumeId) {
-    const email = sessionStorage.getItem('email');
-    apiFetch('/set-primary-resume', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
-    })
-    .then(parseApiResponse)
-    .then(data => {
-      if (data && data.message) {
-        loadMyResumes();
-      } else if (data && data.error) {
-        alert(data.error);
-      } else {
-        alert('Failed to set primary resume.');
-      }
-    })
-    .catch(err => alert('Error: ' + err));
-  }
-
-  function deleteResumeFile(resumeId) {
-    if (!confirm('Delete this resume?')) return;
-    const email = sessionStorage.getItem('email');
-    apiFetch('/delete-resume', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
-    })
-    .then(parseApiResponse)
-    .then(data => {
-      if (data && data.message) {
-        loadMyResumes();
-      } else if (data && data.error) {
-        alert(data.error);
-      } else {
-        alert('Failed to delete resume.');
-      }
-    })
-    .catch(err => alert('Error: ' + err));
-  }
-
-  function logout() {
-    sessionStorage.clear();
-    window.location.href = 'login.html';
+  function delR(id){
+    if(!confirm('Delete?'))return;
+    apiFetch('/delete-resume',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`resumeId=${id}&email=${enc(_u.email)}`})
+      .then(parseResp).then(d=>{if(d?.message){loadRes();loadStats();}else toast(d?.error||'Failed.','error');});
   }
 </script>
 </body>

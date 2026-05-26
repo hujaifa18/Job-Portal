@@ -7,483 +7,291 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main class="main">
 
-<nav class="navbar">
-  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span>
-    <span></span>
-    <span></span>
-  </button>
-  <div class="navbar-links" id="navLinks"></div>
-</nav>
-
-<div class="container-wide">
-  <div class="top-strip">
-    <p>Search the latest jobs in Bangladesh and apply with a single click.</p>
-    <div class="top-strip-links">
-      <a href="login.html">Login</a>
-      <a href="register.html">Register</a>
-    </div>
-  </div>
-
-  <div class="dashboard-header page-header">
-    <div>
-      <h2>Recruiter Dashboard</h2>
-      <p class="text-muted small-text" id="welcomeMsg">Welcome back!</p>
-    </div>
-  </div>
-
-  <div class="stats">
-    <div class="stat-card">
-      <h3>Jobs Posted</h3>
-      <div class="number" id="totalJobs">—</div>
-    </div>
-    <div class="stat-card">
-      <h3>Total Applicants</h3>
-      <div class="number" id="totalApplicants">—</div>
-    </div>
-  </div>
-
-  <div class="dashboard-summary" id="recruiterSummary"></div>
-  <div class="status-chart" id="topPerformanceChart"></div>
-
-  <div class="dashboard-nav">
-    <button class="tab-button active" onclick="switchTab(event,'posted-jobs')">Posted Jobs</button>
-    <button class="tab-button" onclick="switchTab(event,'post-job')">Post New Job</button>
-    <button class="tab-button" onclick="switchTab(event,'applicants')">Applicants</button>
-  </div>
-
-  <!-- Tab 1: Posted Jobs -->
-  <div id="posted-jobs" class="tab-content active">
-    <div class="section-heading dashboard-header">
-      <div>
-        <h2>Your Posted Jobs</h2>
-        <p class="text-muted small-text">Manage and view your job listings</p>
-      </div>
-      <button onclick="loadRecruiterJobs()" class="btn-secondary">Refresh</button>
-    </div>
-    <div id="jobsList"></div>
-  </div>
-
-  <!-- Tab 2: Post New Job -->
-  <div id="post-job" class="tab-content">
-    <div class="section-heading">
-      <h2>Post a New Job</h2>
-      <p class="text-muted small-text">Fill in the details to publish a new listing</p>
-    </div>
-    <div class="dashboard-form">
-      <div class="form-group">
-        <label for="jobTitle">Job Title</label>
-        <input id="jobTitle" type="text" placeholder="e.g., Senior Developer">
-      </div>
-      <div class="form-group">
-        <label for="jobDescription">Job Description</label>
-        <textarea id="jobDescription" placeholder="Describe the job responsibilities and requirements"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="jobSalary">Annual Salary ($)</label>
-          <input id="jobSalary" type="number" placeholder="e.g., 60000">
-        </div>
-        <div class="form-group">
-          <label for="jobLocation">Location</label>
-          <input id="jobLocation" type="text" placeholder="e.g., New York, NY">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+        <div class="topbar-title">
+          <h1 id="welcomeH">Recruiter Dashboard</h1>
+          <p>Manage your listings and review candidates</p>
         </div>
       </div>
-      <div class="form-group">
-        <label for="jobCompany">Company Name</label>
-        <input id="jobCompany" type="text" placeholder="Your company name">
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-row" id="statsRow"></div>
+
+    <!-- Charts -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px" id="chartsRow"></div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="sw(event,'posted-jobs')">Posted Jobs</button>
+      <button class="tab-btn" onclick="sw(event,'post-new')">Post New Job</button>
+      <button class="tab-btn" onclick="sw(event,'applicants')">Applicants</button>
+    </div>
+
+    <!-- Posted Jobs -->
+    <div id="posted-jobs" class="tab-pane active">
+      <div class="section-head">
+        <div><h2>Your Listings</h2><p>All jobs you have published</p></div>
+        <button class="btn-secondary btn-sm" onclick="loadMyJobs()">↺ Refresh</button>
       </div>
-      <button onclick="postJobFromDashboard()">Post Job</button>
+      <div id="jobsList"></div>
+    </div>
+
+    <!-- Post New -->
+    <div id="post-new" class="tab-pane">
+      <div class="section-head mb-4">
+        <div><h2>Post a New Job</h2><p>Fill in the details to publish a listing</p></div>
+      </div>
+      <div class="form-card">
+        <div class="form-group"><label>Job Title</label><input type="text" id="jobTitle" placeholder="e.g. Senior Developer"></div>
+        <div class="form-group"><label>Job Description</label><textarea id="jobDescription" placeholder="Responsibilities, requirements, benefits…"></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label>Annual Salary (৳)</label><input type="number" id="jobSalary" placeholder="e.g. 80000"></div>
+          <div class="form-group"><label>Location</label><input type="text" id="jobLocation" placeholder="e.g. Dhaka"></div>
+        </div>
+        <div class="form-group"><label>Company Name</label><input type="text" id="jobCompany" placeholder="Your company name"></div>
+        <button onclick="submitJob()" class="w-full">Publish Listing</button>
+      </div>
+    </div>
+
+    <!-- Applicants -->
+    <div id="applicants" class="tab-pane">
+      <div class="section-head">
+        <div><h2>All Applicants</h2><p>Review and decide on candidate applications</p></div>
+        <button class="btn-secondary btn-sm" onclick="loadApps()">↺ Refresh</button>
+      </div>
+      <div id="appsList"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="modal-overlay">
+  <div class="modal">
+    <h3>Edit Job Listing</h3>
+    <input type="hidden" id="editId">
+    <div class="form-group"><label>Job Title</label><input type="text" id="editTitle"></div>
+    <div class="form-group"><label>Description</label><textarea id="editDesc"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>Salary (৳)</label><input type="number" id="editSalary"></div>
+      <div class="form-group"><label>Location</label><input type="text" id="editLocation"></div>
+    </div>
+    <div class="form-group"><label>Company</label><input type="text" id="editCompany"></div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button onclick="saveEdit()">Save Changes</button>
     </div>
   </div>
-
-  <!-- Tab 3: Applicants -->
-  <div id="applicants" class="tab-content">
-    <div class="section-heading dashboard-header">
-      <div>
-        <h2>Job Applicants</h2>
-        <p class="text-muted small-text">Review and manage candidate applications</p>
-      </div>
-      <button onclick="loadApplicantsForRecruiter()" class="btn-secondary">Refresh</button>
-    </div>
-    <div id="applicantsList"></div>
-  </div>
-
 </div>
 
 <script src="script.js"></script>
-<!-- Edit Job Modal -->
-<div id="editModal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.35);z-index:200;display:none;align-items:center;justify-content:center;padding:20px;">
-  <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-xl);padding:36px;width:min(560px,100%);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-sm);">
-    <h2 style="margin-bottom:24px;">Edit Job</h2>
-    <input type="hidden" id="editJobId">
-    <div class="form-group"><label>Job Title</label><input id="editTitle" type="text"></div>
-    <div class="form-group"><label>Description</label><textarea id="editDescription"></textarea></div>
-    <div class="form-row">
-      <div class="form-group"><label>Salary ($)</label><input id="editSalary" type="number"></div>
-      <div class="form-group"><label>Location</label><input id="editLocation" type="text"></div>
-    </div>
-    <div class="form-group"><label>Company</label><input id="editCompany" type="text"></div>
-    <div style="display:flex;gap:12px;margin-top:8px;">
-      <button onclick="saveEditJob()">Save Changes</button>
-      <button class="btn-secondary" style="width:auto;" onclick="closeEditModal()">Cancel</button>
-    </div>
-  </div>
-</div>
-
 <script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const email = sessionStorage.getItem('email');
-    const role  = sessionStorage.getItem('role');
-    if (!email || role !== 'RECRUITER') {
-      alert('Please login as a recruiter.');
-      window.location.href = 'login.html';
-      return;
-    }
-    setupNavbar();
-    document.getElementById('welcomeMsg').textContent = 'Welcome back, ' + email;
-    loadRecruiterJobs();
-    loadApplicantsForRecruiter();
-    loadRecruiterSummary();
+  const _u=getUser();
+  if(!_u.email||_u.role!=='RECRUITER') location.href='login.html';
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    buildSidebar('dashboard');
+    document.getElementById('welcomeH').textContent=`Welcome, ${(_u.name||_u.email).split(' ')[0]}!`;
+    loadDashboard();
   });
 
-  function switchTab(event, tabName) {
-    document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-    document.getElementById(tabName).classList.add('active');
-    event.target.classList.add('active');
+  /* ── Tab ── */
+  function sw(e,id){
+    document.querySelectorAll('.tab-pane').forEach(p=>p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    e.currentTarget.classList.add('active');
+    if(id==='posted-jobs') loadMyJobs();
+    if(id==='applicants')  loadApps();
+  }
+
+  /* ── Dashboard data ── */
+  function loadDashboard(){
+    Promise.all([
+      apiFetch(`/recruiter-jobs?email=${enc(_u.email)}`).then(r=>r.ok?r.json():[]),
+      apiFetch(`/applicants?email=${enc(_u.email)}`).then(r=>r.ok?r.json():[])
+    ]).then(([jobs,apps])=>{
+      renderStats(jobs,apps);
+      renderCharts(jobs,apps);
+      renderJobs(jobs);
+    }).catch(()=>{});
+  }
+
+  function renderStats(jobs,apps){
+    const pend=apps.filter(a=>(a.status||'').toLowerCase()==='pending').length;
+    const acc =apps.filter(a=>(a.status||'').toLowerCase()==='accepted').length;
+    document.getElementById('statsRow').innerHTML=`
+      <div class="stat-card gold">
+        <div class="stat-label">Jobs Posted</div>
+        <div class="stat-num">${jobs.length}</div>
+        <div class="stat-sub">Active listings</div>
+      </div>
+      <div class="stat-card dark">
+        <div class="stat-label">Total Applicants</div>
+        <div class="stat-num">${apps.length}</div>
+        <div class="stat-sub">Across all listings</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Pending Review</div>
+        <div class="stat-num" style="color:var(--amber)">${pend}</div>
+        <div class="stat-sub">Awaiting decision</div>
+        ${pend>0?'<span class="stat-trend down">! Needs action</span>':''}
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Accepted</div>
+        <div class="stat-num" style="color:var(--green)">${acc}</div>
+        <div class="stat-sub">Hired candidates</div>
+        ${acc>0?'<span class="stat-trend up">✓ Great</span>':''}
+      </div>`;
+  }
+
+  function renderCharts(jobs,apps){
+    const pend=apps.filter(a=>(a.status||'').toLowerCase()==='pending').length;
+    const acc =apps.filter(a=>(a.status||'').toLowerCase()==='accepted').length;
+    const rej =apps.filter(a=>(a.status||'').toLowerCase()==='rejected').length;
+    const mx  =Math.max(1,pend,acc,rej);
+
+    const topJobs=jobs.map(j=>({...j,cnt:Number(j.applicantCount||0)}))
+      .filter(j=>j.cnt>0).sort((a,b)=>b.cnt-a.cnt).slice(0,4);
+    const topMx=topJobs.length?topJobs[0].cnt:1;
+
+    document.getElementById('chartsRow').innerHTML=`
+      <div class="panel">
+        <h3>Applicant Status</h3>
+        <div class="status-bar-row"><span class="status-bar-label">Pending</span><span class="status-bar-count">${pend}</span><div class="status-bar-track"><div class="status-bar-fill fill-amber" style="width:${Math.round(pend/mx*100)}%"></div></div></div>
+        <div class="status-bar-row"><span class="status-bar-label">Accepted</span><span class="status-bar-count">${acc}</span><div class="status-bar-track"><div class="status-bar-fill fill-green" style="width:${Math.round(acc/mx*100)}%"></div></div></div>
+        <div class="status-bar-row"><span class="status-bar-label">Rejected</span><span class="status-bar-count">${rej}</span><div class="status-bar-track"><div class="status-bar-fill fill-red" style="width:${Math.round(rej/mx*100)}%"></div></div></div>
+      </div>
+      <div class="panel">
+        <h3>Top Performing Listings</h3>
+        ${topJobs.length?topJobs.map((j,i)=>`
+          <div class="perf-row">
+            <div class="perf-rank">#${i+1}</div>
+            <div class="perf-info">
+              <h4>${esc(j.title)}</h4>
+              <p>${esc(j.company)} · ${esc(j.location)}</p>
+            </div>
+            <div>
+              <div class="perf-count">${j.cnt} applicant${j.cnt===1?'':'s'}</div>
+              <div class="perf-bar"><div class="perf-bar-fill" style="width:${Math.round(j.cnt/topMx*100)}%"></div></div>
+            </div>
+          </div>`).join('')
+        :`<p class="text-sm text-muted">Post jobs to see performance data.</p>`}
+      </div>`;
   }
 
   /* ── Posted Jobs ── */
-  function loadRecruiterJobs() {
-    const email = sessionStorage.getItem('email');
-    apiFetch(`/recruiter-jobs?email=${encodeURIComponent(email)}`)
-    .then(parseApiResponse)
-    .then(data => {
-      document.getElementById('totalJobs').textContent = data.length;
-      if (!data.length) {
-        document.getElementById('jobsList').innerHTML =
-          `<div class="empty-state"><div class="empty-icon">📋</div><p>No jobs posted yet. Go to "Post New Job" to get started.</p></div>`;
-        loadRecruiterSummary();
-        return;
-      }
-      document.getElementById('jobsList').innerHTML = data.map(job => `
-        <div class="job-item">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
-            <div>
-              <h3>${job.title}</h3>
-              <p><span class="card-label">Company</span> ${job.company}</p>
-              <p><span class="card-label">Location</span> ${job.location}</p>
-              <p><span class="card-label">Description</span> ${job.description.substring(0,110)}...</p>
+  function loadMyJobs(){
+    const c=document.getElementById('jobsList'); showSkeleton(c,4);
+    apiFetch(`/recruiter-jobs?email=${enc(_u.email)}`).then(r=>r.json()).then(data=>{
+      if(!data.length){c.innerHTML=empty('📋','No jobs posted yet. Use "Post New Job" tab.');return;}
+      c.innerHTML=data.map(j=>`
+        <div class="card" style="margin-bottom:12px">
+          <div class="flex-between">
+            <div style="flex:1;min-width:0">
+              <div class="job-card-title">${esc(j.title)}</div>
+              <div class="job-card-company" style="margin-top:2px">${esc(j.company)} · ${esc(j.location)}</div>
             </div>
-            <div style="text-align:right;">
-              <div class="salary-chip">$${parseFloat(job.salary).toLocaleString()}</div>
-              <p style="font-size:0.8rem;color:var(--text-3);margin-top:6px;">${job.applicantCount} applicant${job.applicantCount == 1 ? '' : 's'}</p>
+            <div style="text-align:right;flex-shrink:0">
+              <span class="chip chip-gold">৳${parseFloat(j.salary).toLocaleString()}</span>
+              <p class="text-sm text-muted" style="margin-top:5px">${j.applicantCount||0} applicant${j.applicantCount==1?'':'s'}</p>
             </div>
           </div>
-          <div class="job-item-footer">
-            <button class="btn-ghost btn-sm" onclick="openEditModal(${job.id}, '${escStr(job.title)}', '${escStr(job.description)}', ${job.salary}, '${escStr(job.location)}', '${escStr(job.company)}')">Edit</button>
-            <button class="btn-danger btn-sm" onclick="deleteJob(${job.id})">Delete</button>
+          <p class="text-sm text-muted" style="margin:10px 0;line-height:1.55">${esc((j.description||'').substring(0,130))}…</p>
+          <div class="flex" style="border-top:1px solid var(--border);padding-top:12px">
+            <button class="btn-ghost btn-sm" onclick="openEdit(${j.id},'${es(j.title)}','${es(j.description)}',${j.salary},'${es(j.location)}','${es(j.company)}')">Edit</button>
+            <button class="btn-danger btn-sm" onclick="deleteJob(${j.id})">Delete</button>
           </div>
         </div>`).join('');
-    })
-    .catch(() => { document.getElementById('jobsList').innerHTML = '<p style="color:#fca5a5;">Error loading jobs.</p>'; });
+    }).catch(()=>{c.innerHTML=empty('⚠️','Error loading jobs.');});
   }
 
-  function escStr(str) {
-    return (str || '').replace(/'/g, "\\'").replace(/\n/g, ' ');
-  }
+  const es=s=>(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,' ');
 
-  /* ── Post Job ── */
-  function postJobFromDashboard() {
-    const title       = document.getElementById('jobTitle').value.trim();
-    const description = document.getElementById('jobDescription').value.trim();
-    const salary      = document.getElementById('jobSalary').value.trim();
-    const location    = document.getElementById('jobLocation').value.trim();
-    const company     = document.getElementById('jobCompany').value.trim();
-    const email       = sessionStorage.getItem('email');
-
-    if (!title || !description || !salary || !location || !company) {
-      alert('Please fill in all fields.'); return;
-    }
-    if (isNaN(salary) || Number(salary) <= 0) {
-      alert('Please enter a valid salary.'); return;
-    }
-
-    apiFetch('/postjob', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&salary=${salary}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&email=${encodeURIComponent(email)}`
-    })
-    .then(parseApiResponse)
-    .then(data => {
-      if (data && data.message) {
-        alert('Job posted successfully!');
-        ['jobTitle','jobDescription','jobSalary','jobLocation','jobCompany'].forEach(id => document.getElementById(id).value = '');
-        loadRecruiterJobs();
-        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
-        document.getElementById('posted-jobs').classList.add('active');
-        document.querySelector('.tab-button').classList.add('active');
-      } else if (data && data.error) {
-        alert(data.error);
-      } else {
-        alert('Failed to post job.');
-      }
-    })
-    .catch(() => alert('Failed to post job. Please try again.'));
-  }
-
-  /* ── Edit Job Modal ── */
-  function openEditModal(id, title, description, salary, location, company) {
-    document.getElementById('editJobId').value      = id;
-    document.getElementById('editTitle').value      = title;
-    document.getElementById('editDescription').value = description;
-    document.getElementById('editSalary').value     = salary;
-    document.getElementById('editLocation').value   = location;
-    document.getElementById('editCompany').value    = company;
-    document.getElementById('editModal').style.display = 'flex';
-  }
-
-  function closeEditModal() {
-    document.getElementById('editModal').style.display = 'none';
-  }
-
-  function saveEditJob() {
-    const jobId       = document.getElementById('editJobId').value;
-    const title       = document.getElementById('editTitle').value.trim();
-    const description = document.getElementById('editDescription').value.trim();
-    const salary      = document.getElementById('editSalary').value.trim();
-    const location    = document.getElementById('editLocation').value.trim();
-    const company     = document.getElementById('editCompany').value.trim();
-    const email       = sessionStorage.getItem('email');
-
-    if (!title || !salary || !location || !company) { alert('Please fill in all fields.'); return; }
-
-    apiFetch('/update-job', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `jobId=${jobId}&title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&salary=${salary}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&email=${encodeURIComponent(email)}`
-    })
-    .then(parseApiResponse)
-    .then(data => {
-      if (data && data.message) {
-        closeEditModal();
-        loadRecruiterJobs();
-      } else if (data && data.error) {
-        alert(data.error);
-      } else {
-        alert('Failed to update job.');
-      }
-    })
-    .catch(() => alert('Failed to update job. Please try again.'));
-  }
-
-  // Close modal when clicking outside
-  document.getElementById('editModal').addEventListener('click', function(e) {
-    if (e.target === this) closeEditModal();
-  });
-
-  /* ── Delete Job ── */
-  function deleteJob(jobId) {
-    if (!confirm('Delete this job? This will also remove all applications for it.')) return;
-    const email = sessionStorage.getItem('email');
-    apiFetch('/delete-job', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `jobId=${jobId}&email=${encodeURIComponent(email)}`
-    })
-    .then(parseApiResponse)
-    .then(data => {
-      if (data && data.message) {
-        loadRecruiterJobs();
-      } else if (data && data.error) {
-        alert(data.error);
-      } else {
-        alert('Failed to delete job.');
-      }
-    })
-    .catch(() => alert('Failed to delete job.'));
+  /* ── Submit Job ── */
+  function submitJob(){
+    const title=v('jobTitle'),desc=v('jobDescription'),salary=v('jobSalary'),loc=v('jobLocation'),comp=v('jobCompany');
+    if(!title||!desc||!salary||!loc||!comp)return toast('Please fill in all fields.','error');
+    if(isNaN(salary)||Number(salary)<=0)return toast('Enter a valid salary.','error');
+    apiFetch('/postjob',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:`title=${enc(title)}&description=${enc(desc)}&salary=${salary}&location=${enc(loc)}&company=${enc(comp)}&email=${enc(_u.email)}`})
+    .then(parseResp).then(d=>{
+      toast(d?.message||d?.error||'Failed.',d?.message?'success':'error');
+      if(d?.message){['jobTitle','jobDescription','jobSalary','jobLocation','jobCompany'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});loadDashboard();}
+    }).catch(()=>toast('Failed.','error'));
   }
 
   /* ── Applicants ── */
-  function loadApplicantsForRecruiter() {
-    const email = sessionStorage.getItem('email');
-    apiFetch(`/applicants?email=${encodeURIComponent(email)}`)
-    .then(parseApiResponse)
-    .then(data => {
-      if (!Array.isArray(data)) {
-        document.getElementById('applicantsList').innerHTML = '<p style="color:#fca5a5;">Error loading applicants.</p>';
-        return;
-      }
-      document.getElementById('totalApplicants').textContent = data.length;
-      if (!data.length) {
-        document.getElementById('applicantsList').innerHTML =
-          `<div class="empty-state"><div class="empty-icon">👥</div><p>No applicants yet.</p></div>`;
-        loadRecruiterSummary();
-        return;
-      }
-      document.getElementById('applicantsList').innerHTML = '<div class="grid">' +
-        data.map(app => {
-          const s = (app.status || 'pending').toLowerCase();
-          const statusClass = s === 'accepted' ? 'status-accepted' : s === 'rejected' ? 'status-rejected' : 'status-pending';
-          return `
-            <div class="card">
-              <p><span class="card-label">Candidate</span><br><strong style="color:var(--text-1);">${app.candidateName || app.email}</strong></p>
-              <p><span class="card-label">Email</span><br>${app.email}</p>
-              <p><span class="card-label">Position</span><br>${app.job}</p>
-              <p><span class="card-label">Company</span><br>${app.company}</p>
-              <p><span class="card-label">Applied</span><br>${new Date(app.appliedAt).toLocaleDateString()}</p>
-              <p style="margin-top:10px;"><span class="status-badge ${statusClass}">${app.status || 'PENDING'}</span></p>
-              <div style="display:flex;gap:8px;margin-top:14px;">
-                <button class="btn-accept btn-sm" onclick="updateStatus(${app.id},'accepted')">Accept</button>
-                <button class="btn-reject btn-sm" onclick="updateStatus(${app.id},'rejected')">Reject</button>
-              </div>
-            </div>`;
-        }).join('') + '</div>';
-    })
-    .catch(() => { document.getElementById('applicantsList').innerHTML = '<p style="color:#fca5a5;">Error loading applicants.</p>'; });
+  function loadApps(){
+    const c=document.getElementById('appsList'); showSkeleton(c,4);
+    apiFetch(`/applicants?email=${enc(_u.email)}`).then(r=>r.json()).then(data=>{
+      if(!data.length){c.innerHTML=empty('👥','No applicants yet.');return;}
+      c.innerHTML=`<div class="grid-3">${data.map(a=>{
+        const s=(a.status||'pending').toLowerCase();
+        return `<div class="card">
+          <div class="text-sm text-muted" style="margin-bottom:3px;font-size:.67rem;text-transform:uppercase;letter-spacing:.06em">Candidate</div>
+          <strong style="display:block;margin-bottom:1px">${esc(a.candidateName||a.email)}</strong>
+          <div class="text-sm text-muted" style="margin-bottom:12px">${esc(a.email)}</div>
+          <hr class="divider">
+          <div class="text-sm"><span class="text-muted">Position</span><br><strong>${esc(a.job)}</strong></div>
+          <div class="text-sm mt-3"><span class="text-muted">Company</span><br>${esc(a.company)}</div>
+          <div class="flex-between mt-4" style="border-top:1px solid var(--border);padding-top:12px">
+            <span class="badge badge-${s}">${a.status||'PENDING'}</span>
+            <span class="text-sm text-muted">${new Date(a.appliedAt).toLocaleDateString()}</span>
+          </div>
+          <div class="flex mt-3">
+            <button class="btn-success btn-sm" onclick="upStatus(${a.id},'accepted')">Accept</button>
+            <button class="btn-danger btn-sm"  onclick="upStatus(${a.id},'rejected')">Reject</button>
+          </div>
+        </div>`;
+      }).join('')}</div>`;
+    }).catch(()=>{c.innerHTML=empty('⚠️','Error.');});
   }
 
-  function loadRecruiterSummary() {
-    const email = sessionStorage.getItem('email');
-    if (!email) return;
-
-    Promise.all([
-      apiFetch(`/recruiter-jobs?email=${encodeURIComponent(email)}`).then(res => res.ok ? res.json() : []),
-      apiFetch(`/applicants?email=${encodeURIComponent(email)}`).then(parseApiResponse)
-    ])
-    .then(([jobs, applicants]) => {
-      const totalJobs = jobs.length;
-      const totalApplicants = Array.isArray(applicants) ? applicants.length : 0;
-      const pending = applicants.filter(a => (a.status || '').toLowerCase() === 'pending').length;
-      const accepted = applicants.filter(a => (a.status || '').toLowerCase() === 'accepted').length;
-      const rejected = applicants.filter(a => (a.status || '').toLowerCase() === 'rejected').length;
-      const jobCountWithApplicants = new Set(applicants.map(a => a.job)).size;
-      const maxCount = Math.max(1, pending, accepted, rejected, totalApplicants);
-
-      document.getElementById('totalJobs').textContent = totalJobs;
-      document.getElementById('totalApplicants').textContent = totalApplicants;
-      document.getElementById('recruiterSummary').innerHTML = `
-        <div class="summary-card-grid">
-          <div class="summary-card">
-            <span class="summary-label">Active Jobs</span>
-            <strong>${totalJobs}</strong>
-            <p class="text-muted">Jobs currently posted by you</p>
-          </div>
-          <div class="summary-card">
-            <span class="summary-label">Applied Candidates</span>
-            <strong>${totalApplicants}</strong>
-            <p class="text-muted">Total applicants across all listings</p>
-          </div>
-          <div class="summary-card">
-            <span class="summary-label">Jobs with applicants</span>
-            <strong>${jobCountWithApplicants}</strong>
-            <p class="text-muted">Listings that have at least one applicant</p>
-          </div>
-          <div class="summary-card">
-            <span class="summary-label">Responses</span>
-            <strong>${accepted + rejected}</strong>
-            <p class="text-muted">Applications already processed</p>
-          </div>
-        </div>
-      `;
-
-      const topJobs = jobs
-        .map(job => ({ ...job, applicantCount: Number(job.applicantCount || 0) }))
-        .filter(job => job.applicantCount > 0)
-        .sort((a, b) => b.applicantCount - a.applicantCount || Number(b.salary) - Number(a.salary))
-        .slice(0, 3);
-
-      const topJobMax = topJobs.length ? topJobs[0].applicantCount : 1;
-      let topPerformanceHtml = `
-        <div class="status-chart">
-          <h3>Applicant Status Breakdown</h3>
-          <div class="status-segment">
-            <span>Pending</span>
-            <span>${pending}</span>
-            <div class="status-bar"><span class="status-bar-fill status-pending" style="width:${Math.round((pending / maxCount) * 100)}%"></span></div>
-          </div>
-          <div class="status-segment">
-            <span>Accepted</span>
-            <span>${accepted}</span>
-            <div class="status-bar"><span class="status-bar-fill status-accepted" style="width:${Math.round((accepted / maxCount) * 100)}%"></span></div>
-          </div>
-          <div class="status-segment">
-            <span>Rejected</span>
-            <span>${rejected}</span>
-            <div class="status-bar"><span class="status-bar-fill status-rejected" style="width:${Math.round((rejected / maxCount) * 100)}%"></span></div>
-          </div>
-        </div>
-      `;
-
-      if (topJobs.length) {
-        topPerformanceHtml += `
-          <div class="section-block">
-            <h3>Top Performing Jobs</h3>
-            <div class="top-performance-list">
-              ${topJobs.map((job, index) => `
-                <div class="top-performance-item">
-                  <div>
-                    <span class="performance-position">#${index + 1}</span>
-                    <h3>${job.title}</h3>
-                    <p class="text-muted">${job.company} · ${job.location}</p>
-                  </div>
-                  <div>
-                    <span class="performance-chip">${job.applicantCount} applicant${job.applicantCount === 1 ? '' : 's'}</span>
-                    <div class="performance-bar">
-                      <span class="performance-bar-fill" style="width:${Math.round((job.applicantCount / topJobMax) * 100)}%"></span>
-                    </div>
-                  </div>
-                </div>`).join('')}
-            </div>
-          </div>`;
-      } else {
-        topPerformanceHtml += `
-          <div class="section-block">
-            <h3>Top Performing Jobs</h3>
-            <div class="empty-state">
-              <div class="empty-icon">📈</div>
-              <p>No applicants yet. Once candidates apply, your top roles will appear here.</p>
-            </div>
-          </div>`;
-      }
-
-      document.getElementById('topPerformanceChart').innerHTML = topPerformanceHtml;
-    })
-    .catch(() => {
-      document.getElementById('recruiterSummary').innerHTML = '<p class="text-muted">Unable to load recruiter summary.</p>';
-    });
+  function upStatus(id,status){
+    if(!confirm(`${status==='accepted'?'Accept':'Reject'} this application?`))return;
+    apiFetch('/update-status',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:`applicationId=${id}&status=${status}&email=${enc(_u.email)}`})
+    .then(parseResp).then(d=>{if(d?.message){loadApps();loadDashboard();}else toast(d?.error||'Failed.','error');})
+    .catch(()=>toast('Failed.','error'));
   }
 
-  function updateStatus(applicationId, status) {
-    const label = status === 'accepted' ? 'accept' : 'reject';
-    if (!confirm(`${label.charAt(0).toUpperCase() + label.slice(1)} this application?`)) return;
-    const email = sessionStorage.getItem('email');
-    apiFetch('/update-status', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `applicationId=${applicationId}&status=${status}&email=${encodeURIComponent(email)}`
-    })
-    .then(parseApiResponse)
-    .then(data => {
-      if (data && data.message) {
-        loadApplicantsForRecruiter();
-        loadRecruiterSummary();
-      } else if (data && data.error) {
-        alert(data.error);
-      } else {
-        alert('Failed to update status.');
-      }
-    })
-    .catch(() => alert('Failed to update status.'));
+  /* ── Edit Modal ── */
+  function openEdit(id,title,desc,salary,loc,comp){
+    document.getElementById('editId').value      =id;
+    document.getElementById('editTitle').value   =title;
+    document.getElementById('editDesc').value    =desc;
+    document.getElementById('editSalary').value  =salary;
+    document.getElementById('editLocation').value=loc;
+    document.getElementById('editCompany').value =comp;
+    document.getElementById('editModal').classList.add('open');
+  }
+  function closeModal(){document.getElementById('editModal').classList.remove('open');}
+  document.getElementById('editModal').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+  function saveEdit(){
+    const id=document.getElementById('editId').value,
+          title=v('editTitle'),desc=v('editDesc'),salary=v('editSalary'),
+          loc=v('editLocation'),comp=v('editCompany');
+    if(!title||!salary||!loc||!comp)return toast('Fill all fields.','error');
+    apiFetch('/update-job',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:`jobId=${id}&title=${enc(title)}&description=${enc(desc)}&salary=${salary}&location=${enc(loc)}&company=${enc(comp)}&email=${enc(_u.email)}`})
+    .then(parseResp).then(d=>{if(d?.message){closeModal();loadMyJobs();loadDashboard();}else toast(d?.error||'Failed.','error');})
+    .catch(()=>toast('Failed.','error'));
   }
 
-  function logout() {
-    sessionStorage.clear();
-    window.location.href = 'login.html';
+  function deleteJob(id){
+    if(!confirm('Delete this job and all its applications?'))return;
+    apiFetch('/delete-job',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`jobId=${id}&email=${enc(_u.email)}`})
+      .then(parseResp).then(d=>{if(d?.message){loadMyJobs();loadDashboard();}else toast(d?.error||'Failed.','error');})
+      .catch(()=>toast('Failed.','error'));
   }
 </script>
 </body>

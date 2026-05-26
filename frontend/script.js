@@ -1,395 +1,339 @@
 /* ============================================================
-   JobPortal — Core Script
-   Fixed bugs:
-   1. API health-check resolution race condition fixed
-   2. parseApiResponse now handles error status codes
-   3. createJobCard salary display fixed
-   4. logout() defined only here (removed from dashboards)
-   5. setupNavbar() safe to call before/after DOM ready
-   6. Name persisted to sessionStorage on login
-   7. Top-strip always reflects live session state
+   JobPortal — Core Script v4  "Obsidian"
+   Full sidebar on every page, Ctrl+K search, backend status,
+   role-aware nav, skeleton loading, staggered animations
    ============================================================ */
 
-const API_HOSTS = ['http://localhost:8080', 'http://localhost:8081', 'http://localhost:8082'];
-let API = API_HOSTS[0];
-let apiReady = null;
+/* ── API ── */
+const API_HOSTS = ['http://localhost:8080','http://localhost:8081','http://localhost:8082'];
+let API = API_HOSTS[0], _apiReady = null;
 
-function resolveApiUrl() {
-  if (apiReady) return apiReady;
-  apiReady = (async () => {
-    for (const host of API_HOSTS) {
+function resolveApi() {
+  if (_apiReady) return _apiReady;
+  _apiReady = (async () => {
+    for (const h of API_HOSTS) {
       try {
-        const res = await fetch(`${host}/health`, { method: 'GET', signal: AbortSignal.timeout(2000) });
-        if (res.ok) {
-          API = host;
-          return host;
-        }
-      } catch (_) { /* try next */ }
+        const r = await fetch(`${h}/health`, { signal: AbortSignal.timeout(2000) });
+        if (r.ok) { API = h; return h; }
+      } catch(_) {}
     }
-    throw new Error('Backend API not reachable on any configured port (8080–8082). Make sure RUN_BACKEND.bat is running.');
+    throw new Error('Backend offline');
   })();
-  return apiReady;
+  return _apiReady;
 }
+const apiFetch = (path, opts={}) => resolveApi().then(h => fetch(h+path, opts));
+const apiUrl   = path => resolveApi().then(h => h+path);
+const parseResp = r => {
+  const ct = r.headers.get('Content-Type')||'';
+  return ct.includes('application/json') ? r.json() : r.text();
+};
 
-function apiFetch(path, options = {}) {
-  return resolveApiUrl().then(host => fetch(`${host}${path}`, options));
-}
+/* ── Session ── */
+const getUser = () => ({
+  email: sessionStorage.getItem('email')||'',
+  role:  sessionStorage.getItem('role') ||'',
+  name:  sessionStorage.getItem('name') ||''
+});
 
-function apiUrl(path) {
-  return resolveApiUrl().then(host => host + path);
-}
+/* ================================================================
+   SIDEBAR  — builds itself on every page from getUser() state
+   ================================================================ */
+function buildSidebar(activePage) {
+  const sb = document.getElementById('sidebar');
+  if (!sb) return;
+  const u = getUser();
+  const isC = u.role === 'CANDIDATE';
+  const isR = u.role === 'RECRUITER';
 
-/* BUG FIX: original parseApiResponse ignored HTTP error status codes.
-   Now rejects on non-ok responses so callers can show proper errors. */
-function parseApiResponse(response) {
-  const contentType = response.headers.get('Content-Type') || '';
-  const isJson = contentType.includes('application/json');
-  return isJson ? response.json() : response.text();
-}
-
-/* ── Session helpers ── */
-function getSessionUser() {
-  return {
-    email: sessionStorage.getItem('email') || '',
-    role:  sessionStorage.getItem('role')  || '',
-    name:  sessionStorage.getItem('name')  || ''
-  };
-}
-
-/* ── Navbar ── */
-function renderNavbar() {
-  const nav = document.getElementById('navLinks');
-  if (!nav) return;
-
-  const user = getSessionUser();
-
-  let html = `<a href="index.html">Home</a><a href="jobs.html">Browse Jobs</a>`;
-
-  if (user.email && user.role) {
-    const dashPage = user.role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
-    const extraLink = user.role === 'CANDIDATE'
-      ? `<a href="resume.html">My Resume</a>`
-      : `<a href="postJob.html">Post Job</a>`;
-    html += `
-      <div class="nav-dropdown">
-        <button class="dropdown-trigger">More ▾</button>
-        <div class="dropdown-menu">${extraLink}</div>
+  sb.innerHTML = `
+    <!-- Brand -->
+    <div class="sb-brand">
+      <div class="sb-logo">💼</div>
+      <div class="sb-brand-text">
+        <strong>JobPortal</strong>
+        <span>Career Platform</span>
       </div>
-      <a href="${dashPage}" class="btn-nav-cta">Dashboard</a>
-      <span class="nav-user">${user.name || user.email}</span>
-      <button class="logout-btn" onclick="logout()">Logout</button>`;
-  } else {
-    html += `
-      <div class="nav-dropdown">
-        <button class="dropdown-trigger">More ▾</button>
-        <div class="dropdown-menu"><a href="register.html">Register</a></div>
+    </div>
+
+    <!-- Quick search -->
+    <div class="sb-search">
+      <div class="sb-search-inner" id="sbSearchWrap">
+        <span class="sb-search-icon">⌕</span>
+        <input id="sbQ" type="text" placeholder="Search jobs…" autocomplete="off">
+        <span class="sb-shortcut">⌘K</span>
       </div>
-      <a href="login.html">Login</a>
-      <a href="register.html" class="btn-nav-cta">Register</a>`;
+    </div>
+
+    <!-- MAIN -->
+    <div class="sb-section">Main</div>
+    ${ni('🏠','Home',        'index.html',    activePage==='home')}
+    ${ni('🔍','Browse Jobs', 'jobs.html',     activePage==='jobs')}
+
+    ${!u.email ? `
+      <div class="sb-section">Account</div>
+      ${ni('🔑','Login',    'login.html',    activePage==='login')}
+      ${ni('📝','Register', 'register.html', activePage==='register')}
+    ` : ''}
+
+    ${isC ? `
+      <div class="sb-section">Candidate</div>
+      ${ni('📊','Dashboard',  'candidate-dashboard.html', activePage==='dashboard')}
+      ${ni('📄','My Resume',  'resume.html',              activePage==='resume')}
+    ` : ''}
+
+    ${isR ? `
+      <div class="sb-section">Recruiter</div>
+      ${ni('📊','Dashboard',  'recruiter-dashboard.html', activePage==='dashboard')}
+      ${ni('➕','Post Job',   'postJob.html',             activePage==='postjob')}
+      ${ni('👥','Applicants', 'applicants.html',          activePage==='applicants')}
+    ` : ''}
+
+    <div class="sb-divider"></div>
+    <div class="sb-section">Info</div>
+    ${ni('💡','How It Works','index.html#how', false)}
+    ${ni('❓','Help',        'index.html#help',false)}
+
+    <!-- Footer -->
+    <div class="sb-pinned">
+      <div class="sb-status">
+        <div class="sb-dot checking" id="sbDot"></div>
+        <span id="sbStatusLabel">Connecting…</span>
+      </div>
+      ${u.email ? `
+        <div class="sb-user">
+          <div class="sb-avatar">${(u.name||u.email).charAt(0).toUpperCase()}</div>
+          <div class="sb-user-info">
+            <strong>${esc(u.name||u.email)}</strong>
+            <span>${u.role}</span>
+          </div>
+          <button class="sb-logout" onclick="logout()" title="Logout">⏏</button>
+        </div>
+      ` : `
+        <div class="sb-user" onclick="location='login.html'" style="cursor:pointer">
+          <div class="sb-avatar" style="background:rgba(255,255,255,0.07);font-size:1rem">👤</div>
+          <div class="sb-user-info">
+            <strong style="color:var(--sb-txt)">Not logged in</strong>
+            <span>Click to login</span>
+          </div>
+        </div>
+      `}
+    </div>`;
+
+  /* Mobile overlay */
+  let ov = document.getElementById('sbOv');
+  if (!ov) {
+    ov = Object.assign(document.createElement('div'), {id:'sbOv',className:'sb-overlay'});
+    ov.onclick = closeSb;
+    document.body.appendChild(ov);
+  }
+  const mbtn = document.getElementById('mobileMenuBtn');
+  if (mbtn) mbtn.onclick = () => { sb.classList.toggle('open'); ov.classList.toggle('show'); };
+
+  /* Quick search — Enter → jobs.html?keyword=… */
+  const qi = document.getElementById('sbQ');
+  if (qi) {
+    qi.addEventListener('keydown', e => {
+      if (e.key==='Enter' && qi.value.trim())
+        location.href = `jobs.html?keyword=${encodeURIComponent(qi.value.trim())}`;
+    });
   }
 
-  nav.innerHTML = html;
+  /* Ctrl/Cmd+K */
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey||e.metaKey) && e.key==='k') {
+      e.preventDefault();
+      const i = document.getElementById('sbQ');
+      if (i) { i.focus(); i.select(); }
+    }
+  });
+
+  /* Escape closes mobile sidebar */
+  document.addEventListener('keydown', e => { if (e.key==='Escape') closeSb(); });
+
+  pingBackend();
 }
 
-function updateTopStrip() {
-  const strip = document.querySelector('.top-strip');
-  if (!strip) return;
-  const links = strip.querySelector('.top-strip-links');
-  if (!links) return;
-  const user = getSessionUser();
-  if (user.email && user.role) {
-    const dashPage = user.role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
-    links.innerHTML = `
-      <a href="${dashPage}">Dashboard</a>
-      <button class="logout-btn" onclick="logout()">Logout</button>`;
-  } else {
-    links.innerHTML = `
-      <a href="login.html">Login</a>
-      <a href="register.html">Register</a>`;
-  }
+function ni(icon, label, href, active) {
+  return `<div class="sb-item${active?' active':''}">
+    <a href="${href}"><span class="sb-icon">${icon}</span><span class="sb-label">${label}</span></a>
+  </div>`;
+}
+function closeSb() {
+  document.getElementById('sidebar')?.classList.remove('open');
+  document.getElementById('sbOv')?.classList.remove('show');
 }
 
-function setupNavbar() {
-  renderNavbar();
-  updateTopStrip();
-  const toggle   = document.getElementById('navbarToggle');
-  const navLinks = document.getElementById('navLinks');
-  if (toggle && navLinks) {
-    toggle.addEventListener('click', () => navLinks.classList.toggle('active'));
-  }
+function pingBackend() {
+  const dot = document.getElementById('sbDot');
+  const lbl = document.getElementById('sbStatusLabel');
+  if (!dot||!lbl) return;
+  resolveApi()
+    .then(()  => { dot.className='sb-dot online';  lbl.textContent='Backend online'; })
+    .catch(()  => { dot.className='sb-dot offline'; lbl.textContent='Backend offline'; });
 }
 
 /* ── Auth ── */
 function register() {
-  const name     = document.getElementById('name')?.value.trim();
-  const email    = document.getElementById('email')?.value.trim();
-  const password = document.getElementById('password')?.value.trim();
-  const role     = document.getElementById('role')?.value;
-
-  if (!name || !email || !password || !role) return showAlert('Please fill in all fields.');
-  if (password.length < 6) return showAlert('Password must be at least 6 characters.');
-  if (!validateEmail(email)) return showAlert('Please enter a valid email address.');
-
-  apiFetch('/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `name=${encodeURIComponent(name)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}&role=${encodeURIComponent(role)}`
-  })
-  .then(parseApiResponse)
-  .then(data => {
-    if (data?.message) {
-      showAlert('Registration successful! Please login.');
-      window.location.href = 'login.html';
-    } else {
-      showAlert(data?.error || 'Registration failed. Please try again.');
-    }
-  })
-  .catch(() => showAlert('Cannot connect to server. Make sure the backend is running.'));
+  const name=v('name'),email=v('email'),password=v('password'),role=v('role');
+  if (!name||!email||!password||!role) return toast('Please fill in all fields.');
+  if (password.length<6) return toast('Password must be at least 6 characters.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return toast('Enter a valid email.');
+  apiFetch('/register',{
+    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:`name=${enc(name)}&email=${enc(email)}&password=${enc(password)}&role=${enc(role)}`
+  }).then(parseResp).then(d => {
+    if (d?.message) { toast('Account created! Redirecting…','success'); setTimeout(()=>location.href='login.html',1100); }
+    else toast(d?.error||'Registration failed.','error');
+  }).catch(()=>toast('Cannot reach server.','error'));
 }
 
 function login() {
-  const email    = document.getElementById('email')?.value.trim();
-  const password = document.getElementById('password')?.value.trim();
-
-  if (!email || !password) return showAlert('Please fill in all fields.');
-
-  apiFetch('/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`
-  })
-  .then(parseApiResponse)
-  .then(data => {
-    if (data?.role) {
-      /* BUG FIX: also persist 'name' to sessionStorage so navbar shows real name */
-      sessionStorage.setItem('email', data.email || email);
-      sessionStorage.setItem('role',  data.role);
-      sessionStorage.setItem('name',  data.name || '');
-      window.location.href = data.role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
-    } else {
-      showAlert(data?.error || 'Invalid email or password.');
-    }
-  })
-  .catch(() => showAlert('Cannot connect to server. Make sure the backend is running.'));
+  const email=v('email'),password=v('password');
+  if (!email||!password) return toast('Please fill in all fields.');
+  apiFetch('/login',{
+    method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:`email=${enc(email)}&password=${enc(password)}`
+  }).then(parseResp).then(d => {
+    if (d?.role) {
+      sessionStorage.setItem('email',d.email||email);
+      sessionStorage.setItem('role', d.role);
+      sessionStorage.setItem('name', d.name||'');
+      location.href = d.role==='RECRUITER'?'recruiter-dashboard.html':'candidate-dashboard.html';
+    } else toast(d?.error||'Invalid credentials.','error');
+  }).catch(()=>toast('Cannot reach server.','error'));
 }
 
-function logout() {
-  sessionStorage.clear();
-  window.location.href = 'login.html';
-}
+function logout() { sessionStorage.clear(); location.href='login.html'; }
 
 /* ── Jobs ── */
-/* BUG FIX: createJobCard had empty <p> before salary chip and missing description field */
 function createJobCard(job) {
-  const user = getSessionUser();
-  const applyBtn = user.email
-    ? `<button onclick="applyJob(${job.id}, '${user.email}')">Apply Now</button>`
-    : `<a href="login.html" class="btn-nav-cta" style="display:inline-block;">Login to Apply</a>`;
-
+  const u = getUser();
+  const salary = parseFloat(job.salary||0).toLocaleString();
+  const applyBtn = u.email
+    ? `<button class="btn-sm" onclick="applyJob(${job.id},'${u.email}')">Apply Now</button>`
+    : `<a href="login.html" class="btn-sm" style="display:inline-flex;align-items:center;padding:7px 14px;background:var(--gold);color:#0a0d14;border-radius:var(--r-sm);font-weight:700;font-size:.79rem;gap:4px;">Login to Apply</a>`;
   return `
-    <div class="card">
-      <div class="card-badge">${job.location || 'Remote'}</div>
-      <h3>${escapeHtml(job.title)}</h3>
-      <p><span class="card-label">Company</span><br>${escapeHtml(job.company)}</p>
-      <p><span class="card-label">Location</span><br>${escapeHtml(job.location)}</p>
-      <p class="card-desc">${escapeHtml((job.description || '').substring(0, 100))}…</p>
-      <div class="salary-chip">৳${parseFloat(job.salary).toLocaleString()} / yr</div>
-      <div style="margin-top:16px;">${applyBtn}</div>
+    <div class="job-card">
+      <div class="job-card-head">
+        <div>
+          <div class="job-card-title">${esc(job.title)}</div>
+          <div class="job-card-company">${esc(job.company)}</div>
+        </div>
+        <span class="chip chip-gold">৳${salary}</span>
+      </div>
+      <div class="job-card-meta">
+        <span class="chip chip-gray">📍 ${esc(job.location)}</span>
+        <span class="chip chip-teal">Full-time</span>
+      </div>
+      <p class="text-sm text-muted" style="line-height:1.55">${esc((job.description||'').substring(0,110))}…</p>
+      <div class="job-card-footer">
+        <span class="text-muted text-sm">${job.applicantCount||0} applicant${job.applicantCount==1?'':'s'}</span>
+        ${applyBtn}
+      </div>
     </div>`;
 }
 
-function applyJob(jobId, candidateEmail) {
-  if (!candidateEmail) return showAlert('Please login first to apply for jobs.');
-  apiFetch('/apply', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `jobId=${jobId}&email=${encodeURIComponent(candidateEmail)}`
-  })
-  .then(parseApiResponse)
-  .then(data => showAlert(data?.message || data?.error || 'Failed to apply. Please try again.'))
-  .catch(() => showAlert('Failed to apply. Please try again.'));
+function applyJob(jobId, email) {
+  apiFetch('/apply',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:`jobId=${jobId}&email=${enc(email)}`})
+  .then(parseResp).then(d=>toast(d?.message||d?.error||'Failed.', d?.message?'success':'error'))
+  .catch(()=>toast('Failed to apply.','error'));
 }
 
-function postJob() {
-  const title       = document.getElementById('title')?.value.trim();
-  const description = document.getElementById('description')?.value.trim();
-  const salary      = document.getElementById('salary')?.value.trim();
-  const location    = document.getElementById('location')?.value.trim();
-  const company     = document.getElementById('company')?.value.trim();
-  const email       = document.getElementById('email')?.value.trim() || sessionStorage.getItem('email');
-
-  if (!title || !description || !salary || !location || !company || !email)
-    return showAlert('Please fill in all fields.');
-  if (isNaN(salary) || Number(salary) <= 0)
-    return showAlert('Please enter a valid salary.');
-
-  apiFetch('/postjob', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: `title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}&salary=${salary}&location=${encodeURIComponent(location)}&company=${encodeURIComponent(company)}&email=${encodeURIComponent(email)}`
-  })
-  .then(parseApiResponse)
-  .then(data => {
-    if (data?.message) {
-      showAlert(data.message);
-      ['title','description','salary','location','company'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.value = '';
-      });
-    } else {
-      showAlert(data?.error || 'Failed to post job.');
-    }
-  })
-  .catch(() => showAlert('Failed to post job. Please try again.'));
-}
-
-function loadJobs(params = {}) {
-  const container = document.getElementById('jobList');
-  if (!container) return;
-  container.innerHTML = `<div class="loading-spinner"><div class="spinner"></div><p>Loading jobs…</p></div>`;
-
-  const query = new URLSearchParams();
-  if (params.keyword)   query.append('keyword', params.keyword);
-  if (params.location)  query.append('location', params.location);
-  if (params.minSalary) query.append('minSalary', params.minSalary);
-  if (params.maxSalary) query.append('maxSalary', params.maxSalary);
-  const endpoint = [...query].length ? `/search?${query}` : '/jobs';
-
-  apiFetch(endpoint)
-    .then(parseApiResponse)
-    .then(data => {
-      if (!Array.isArray(data) || !data.length) {
-        container.innerHTML = emptyState('💼', 'No jobs found. Try adjusting your search filters.');
-        return;
-      }
-      container.innerHTML = '<div class="grid">' + data.map(createJobCard).join('') + '</div>';
-    })
-    .catch(() => {
-      container.innerHTML = errorState('Error loading jobs. Make sure the backend is running.');
-    });
-}
-
-function loadHomeJobs() {
-  const container = document.getElementById('homeJobs');
-  if (!container) return;
-  container.innerHTML = `<div class="loading-spinner"><div class="spinner"></div><p>Loading featured jobs…</p></div>`;
-  apiFetch('/jobs')
-    .then(parseApiResponse)
-    .then(data => {
-      if (!Array.isArray(data) || !data.length) {
-        container.innerHTML = emptyState('💼', 'No featured jobs available right now.');
-        return;
-      }
-      container.innerHTML = '<div class="job-grid">' + data.slice(0, 6).map(job => `
-        <div class="job-card">
-          <div class="job-label">${escapeHtml(job.location || 'Remote')}</div>
-          <h3>${escapeHtml(job.title)}</h3>
-          <p>${escapeHtml(job.company)} · ${escapeHtml(job.location)}</p>
-          <span class="salary-chip">৳${parseFloat(job.salary).toLocaleString()}</span>
-        </div>`).join('') + '</div>';
-    })
-    .catch(() => {
-      container.innerHTML = errorState('Error loading featured jobs.');
-    });
-}
-
-function getQueryParams() {
-  const p = new URLSearchParams(window.location.search);
-  return {
-    keyword:   p.get('keyword')   || '',
-    location:  p.get('location')  || '',
-    minSalary: p.get('minSalary') || '',
-    maxSalary: p.get('maxSalary') || ''
-  };
+function loadJobs(params={}) {
+  const c=document.getElementById('jobList'); if(!c) return;
+  showSkeleton(c,6);
+  const q=new URLSearchParams();
+  if(params.keyword)   q.append('keyword',params.keyword);
+  if(params.location)  q.append('location',params.location);
+  if(params.minSalary) q.append('minSalary',params.minSalary);
+  if(params.maxSalary) q.append('maxSalary',params.maxSalary);
+  apiFetch([...q].length?`/search?${q}`:'/jobs').then(parseResp).then(data=>{
+    if(!Array.isArray(data)||!data.length){c.innerHTML=empty('💼','No jobs found. Adjust your filters.');return;}
+    c.innerHTML=`<div class="grid-3">${data.map(createJobCard).join('')}</div>`;
+  }).catch(()=>{c.innerHTML=empty('⚠️','Could not load jobs. Is the backend running?');});
 }
 
 function searchJobs() {
-  const keyword   = document.getElementById('searchKeyword')?.value.trim()   || '';
-  const location  = document.getElementById('filterLocation')?.value.trim()  || '';
-  const minSalary = document.getElementById('filterMinSalary')?.value.trim() || '';
-  const maxSalary = document.getElementById('filterMaxSalary')?.value.trim() || '';
-  loadJobs({ keyword, location, minSalary, maxSalary });
-  const q = new URLSearchParams();
-  if (keyword)   q.append('keyword', keyword);
-  if (location)  q.append('location', location);
-  if (minSalary) q.append('minSalary', minSalary);
-  if (maxSalary) q.append('maxSalary', maxSalary);
-  window.history.replaceState({}, '', `${window.location.pathname}?${q}`);
+  loadJobs({keyword:v('searchKeyword'),location:v('filterLocation'),minSalary:v('filterMinSalary'),maxSalary:v('filterMaxSalary')});
 }
-
-function resetJobSearch() {
-  ['searchKeyword','filterLocation','filterMinSalary','filterMaxSalary'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
+function resetSearch() {
+  ['searchKeyword','filterLocation','filterMinSalary','filterMaxSalary'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
   loadJobs();
-  history.replaceState({}, '', window.location.pathname);
 }
 
-/* BUG FIX: loadApplicants called from applicants.html — was using wrong container 'list' */
+function postJob() {
+  const title=v('title'),desc=v('description'),salary=v('salary'),location=v('location'),company=v('company');
+  const email=v('email')||getUser().email;
+  if(!title||!desc||!salary||!location||!company||!email) return toast('Please fill in all fields.');
+  if(isNaN(salary)||Number(salary)<=0) return toast('Enter a valid salary.');
+  apiFetch('/postjob',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+    body:`title=${enc(title)}&description=${enc(desc)}&salary=${salary}&location=${enc(location)}&company=${enc(company)}&email=${enc(email)}`})
+  .then(parseResp).then(d=>{
+    if(d?.message){
+      toast(d.message,'success');
+      ['title','description','salary','location','company'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});
+    } else toast(d?.error||'Failed.','error');
+  }).catch(()=>toast('Failed.','error'));
+}
+
 function loadApplicants() {
-  const container = document.getElementById('list');
-  if (!container) return;
-  const { email, role } = getSessionUser();
-  if (!email || role !== 'RECRUITER') {
-    container.innerHTML = emptyState('🔒', 'Please login as a recruiter to view applicants.');
-    return;
-  }
-  container.innerHTML = `<div class="loading-spinner"><div class="spinner"></div><p>Loading applicants…</p></div>`;
-  apiFetch(`/applicants?email=${encodeURIComponent(email)}`)
-    .then(parseApiResponse)
-    .then(data => {
-      if (!Array.isArray(data) || !data.length) {
-        container.innerHTML = emptyState('👤', 'No applicants yet.');
-        return;
-      }
-      container.innerHTML = '<div class="grid">' + data.map(a => `
-        <div class="card">
-          <p><span class="card-label">Candidate</span><br><strong>${escapeHtml(a.email)}</strong></p>
-          <p><span class="card-label">Position</span><br>${escapeHtml(a.job)}</p>
-          <p><span class="card-label">Company</span><br>${escapeHtml(a.company)}</p>
-          <p><span class="card-label">Status</span><br><span class="status-badge status-${(a.status||'pending').toLowerCase()}">${a.status || 'PENDING'}</span></p>
-          <p style="font-size:0.8rem;color:var(--text-3);margin-top:8px;">${new Date(a.appliedAt).toLocaleDateString()}</p>
-        </div>`).join('') + '</div>';
-    })
-    .catch(() => { container.innerHTML = errorState('Error loading applicants.'); });
+  const c=document.getElementById('list'); if(!c) return;
+  const {email,role}=getUser();
+  if(!email||role!=='RECRUITER'){c.innerHTML=empty('🔒','Login as recruiter to view applicants.');return;}
+  showSkeleton(c,4);
+  apiFetch(`/applicants?email=${enc(email)}`).then(parseResp).then(data=>{
+    if(!Array.isArray(data)||!data.length){c.innerHTML=empty('👤','No applicants yet.');return;}
+    c.innerHTML=`<div class="grid-3">${data.map(a=>`
+      <div class="card">
+        <div class="text-sm text-muted" style="margin-bottom:3px;letter-spacing:.06em;font-size:.67rem;text-transform:uppercase;">Candidate</div>
+        <strong style="display:block;margin-bottom:2px">${esc(a.candidateName||a.email)}</strong>
+        <div class="text-sm text-muted">${esc(a.email)}</div>
+        <hr class="divider">
+        <div class="text-sm"><span class="text-muted">Position</span><br><strong>${esc(a.job)}</strong></div>
+        <div class="flex mt-3">
+          <span class="badge badge-${(a.status||'pending').toLowerCase()}">${a.status||'PENDING'}</span>
+          <span class="text-sm text-muted">${new Date(a.appliedAt).toLocaleDateString()}</span>
+        </div>
+      </div>`).join('')}</div>`;
+  }).catch(()=>{c.innerHTML=empty('⚠️','Error loading applicants.');});
 }
 
 /* ── Utilities ── */
-function validateEmail(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const v   = id => document.getElementById(id)?.value.trim()||'';
+const enc = s  => encodeURIComponent(s);
+const esc = s  => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function toast(msg, type='default') {
+  const t=document.createElement('div');
+  t.className='toast';
+  const colors={success:'var(--green)',error:'var(--red)',default:'var(--gold)'};
+  t.style.borderLeftColor=colors[type]||colors.default;
+  t.innerHTML=`${type==='success'?'✓ ':type==='error'?'✕ ':''}${msg}`;
+  document.body.appendChild(t);
+  requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},3600);
 }
 
-function escapeHtml(str) {
-  if (!str) return '';
-  return String(str)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;');
+function showSkeleton(el, n=3) {
+  el.innerHTML=`<div class="grid-3">${Array(n).fill(`
+    <div class="job-card" style="gap:14px">
+      <div class="skeleton" style="height:20px;width:65%"></div>
+      <div class="skeleton" style="height:14px;width:40%"></div>
+      <div class="skeleton" style="height:12px;width:80%"></div>
+      <div class="skeleton" style="height:36px"></div>
+    </div>`).join('')}</div>`;
 }
 
-function showAlert(message) {
-  /* Replaced native alert() with toast notifications */
-  const toast = document.createElement('div');
-  toast.className = 'toast-notification';
-  toast.textContent = message;
-  document.body.appendChild(toast);
-  requestAnimationFrame(() => toast.classList.add('toast-show'));
-  setTimeout(() => {
-    toast.classList.remove('toast-show');
-    setTimeout(() => toast.remove(), 300);
-  }, 3500);
+function showLoading(el) {
+  el.innerHTML=`<div class="spinner-wrap"><div class="spinner"></div><p>Loading…</p></div>`;
 }
 
-function emptyState(icon, text) {
-  return `<div class="empty-state"><div class="empty-icon">${icon}</div><p>${text}</p></div>`;
+function empty(icon,text) {
+  return `<div class="empty-state"><div class="icon">${icon}</div><p>${text}</p></div>`;
 }
 
-function errorState(text) {
-  return `<div class="empty-state"><div class="empty-icon">⚠️</div><p style="color:var(--red);">${text}</p></div>`;
+function getQueryParams() {
+  const p=new URLSearchParams(window.location.search);
+  return {keyword:p.get('keyword')||'',location:p.get('location')||'',minSalary:p.get('minSalary')||'',maxSalary:p.get('maxSalary')||''};
 }
-
-/* BUG FIX: setupNavbar was called in index.html before script.js loaded.
-   Using DOMContentLoaded ensures it always runs at the right time. */
-document.addEventListener('DOMContentLoaded', setupNavbar);

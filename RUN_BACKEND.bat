@@ -1,37 +1,57 @@
 @echo off
-REM Job Portal Backend - Quick Start Script
+REM ============================================================
+REM  Job Portal Backend — Quick Start Script (Fixed)
+REM  Requirements: Java 8+, XAMPP with MySQL running
+REM ============================================================
 
 echo.
-echo ========================================
-echo Job Portal Backend - Starting...
-echo ========================================
+echo  ============================================
+echo   Job Portal Backend
+echo  ============================================
 echo.
 
-REM Change to backend directory
-cd /d "%~dp0backend"
+REM Check Java is installed
+java -version >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo  [ERROR] Java not found. Install Java 8+ and add it to PATH.
+    pause
+    exit /b 1
+)
 
-echo.
-echo [1/2] Compiling Java files...
+REM Navigate to project root
+cd /d "%~dp0"
+
+echo  [1/2] Compiling Java source files...
 echo.
 
-REM Compile
-javac -d bin -cp "lib/*;src" src/util/DBConnection.java src/model/*.java src/dao/*.java src/service/*.java src/server/Server.java
+REM Compile all source files
+javac -d backend\bin -cp "backend\lib\*;backend\src" ^
+    backend\src\util\DBConnection.java ^
+    backend\src\model\*.java ^
+    backend\src\dao\*.java ^
+    backend\src\service\*.java ^
+    backend\src\server\Server.java
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo ❌ Compilation failed!
-    echo Check the errors above.
+    echo  [ERROR] Compilation failed. Check errors above.
     pause
     exit /b 1
 )
 
 echo.
-echo ✅ Compilation successful!
+echo  [OK] Compilation successful!
 echo.
-echo [2/2] Starting Java Server on port 8080...
+echo  [2/2] Starting server on http://localhost:8080
+echo.
+echo  Make sure XAMPP MySQL is running before this step!
+echo  Press Ctrl+C to stop the server.
 echo.
 
-REM Run
-java -cp "bin;lib/*" server.Server
+REM Create uploads directory if missing
+if not exist "uploads" mkdir uploads
+
+REM Run server
+java -cp "backend\bin;backend\lib\*" server.Server
 
 pause

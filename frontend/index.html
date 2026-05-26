@@ -3,115 +3,103 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>JobPortal — Find Your Dream Job</title>
+  <title>JobPortal — Find Your Dream Role</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="layout">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main class="main">
 
-<nav class="navbar">
-  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span><span></span><span></span>
-  </button>
-  <div class="navbar-links" id="navLinks"></div>
-</nav>
-
-<div class="container-wide">
-  <div class="top-strip">
-    <p>Search the latest jobs in Bangladesh and apply with a single click.</p>
-    <div class="top-strip-links">
-      <a href="login.html">Login</a>
-      <a href="register.html">Register</a>
-    </div>
-  </div>
-
-  <div class="hero hero-clone">
-    <div class="hero-copy">
-      <div class="hero-kicker">Bangladesh job market</div>
-      <h1>Find your next role and hire faster</h1>
-      <p>Discover curated openings, upload your resume, and connect with recruiters in one professional portal.</p>
-
-      <div class="hero-search">
-        <div class="search-field">
-          <label>Keyword</label>
-          <input type="text" id="homeKeyword" placeholder="Job title, skill, company">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+        <div class="topbar-title">
+          <h1>Welcome to JobPortal</h1>
+          <p>Bangladesh's professional career platform</p>
         </div>
-        <div class="search-field">
-          <label>Location</label>
-          <input type="text" id="homeLocation" placeholder="City or district">
-        </div>
-        <button onclick="searchFromHome()">Search</button>
       </div>
-
-      <div class="nav-buttons">
-        <a href="jobs.html" class="nav-button primary">Browse Jobs</a>
-        <a href="register.html" class="nav-button">Create Account</a>
-        <a href="login.html" class="nav-button">Login</a>
-      </div>
-
-      <div class="hero-stats">
-        <div><strong>4,900+</strong> Live jobs</div>
-        <div><strong>1,200+</strong> Recruiters</div>
-        <div><strong>100%</strong> Free access</div>
+      <div class="topbar-actions">
+        <a href="jobs.html"><button class="btn-secondary btn-sm">Browse Jobs</button></a>
+        <a href="register.html"><button class="btn-sm">Get Started →</button></a>
       </div>
     </div>
 
-    <div class="hero-visual">
-      <div class="stat-card highlight">
-        <p>Upload resume in PDF</p>
-        <strong>Apply faster with your CV</strong>
+    <!-- Hero -->
+    <div class="hero-section">
+      <div class="hero-kicker">Bangladesh's Job Market</div>
+      <h1>Find your next role.<br><em>Hire with confidence.</em></h1>
+      <p>Search curated openings across Bangladesh, upload your resume, and connect with top recruiters — all in one elegant portal.</p>
+      <div class="hero-search-bar">
+        <input type="text"   id="homeKeyword"  placeholder="Job title, skill or company…">
+        <div class="hero-sep"></div>
+        <input type="text"   id="homeLocation" placeholder="City or district">
+        <button onclick="goSearch()">Search Jobs</button>
       </div>
-      <div class="stat-card">
-        <p>Post jobs instantly</p>
-        <strong>Get employer attention quickly</strong>
+      <div class="hero-stats-row">
+        <div class="hero-stat"><strong>4,900+</strong><span>Live Jobs</span></div>
+        <div class="hero-stat"><strong>1,200+</strong><span>Recruiters</span></div>
+        <div class="hero-stat"><strong>100%</strong><span>Free Access</span></div>
+        <div class="hero-stat"><strong>24/7</strong><span>Support</span></div>
       </div>
     </div>
-  </div>
 
-  <div class="section-heading section-heading--center">
-    <h2>Popular Services</h2>
-    <p>Everything a job seeker or recruiter needs in one portal.</p>
-  </div>
-
-  <div class="features features-clone">
-    <div class="feature-card">
-      <div class="feature-icon">👤</div>
-      <h3>Job Seeker</h3>
-      <p>Search jobs by title, company, or location and apply with a single click.</p>
+    <!-- How it works -->
+    <div class="section-head mb-4" id="how">
+      <div><h2>How It Works</h2><p>Three steps to your next opportunity</p></div>
     </div>
-    <div class="feature-card">
-      <div class="feature-icon">📨</div>
-      <h3>Easy Apply</h3>
-      <p>Upload your resume once and apply to multiple positions instantly.</p>
+    <div class="feature-row mb-6">
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <h3>Search</h3>
+        <p>Filter by title, company, location and salary range to pinpoint the perfect match.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📤</div>
+        <h3>Apply</h3>
+        <p>Upload your resume once and apply to multiple positions in seconds.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">✦</div>
+        <h3>Get Hired</h3>
+        <p>Track applications, receive responses, and land your dream role.</p>
+      </div>
     </div>
-    <div class="feature-card">
-      <div class="feature-icon">🏢</div>
-      <h3>Recruiter</h3>
-      <p>Post jobs, review applications, and manage your hiring pipeline.</p>
+
+    <!-- Featured jobs -->
+    <div class="section-head">
+      <div><h2>Featured Jobs</h2><p>Latest vacancies across Bangladesh</p></div>
+      <a href="jobs.html"><button class="btn-secondary btn-sm">View All →</button></a>
     </div>
-  </div>
-
-  <div class="section-heading section-heading--center">
-    <h2>Recent Jobs</h2>
-    <p>Latest vacancies posted across Bangladesh.</p>
-  </div>
-
-  <div id="homeJobs"></div>
+    <div id="homeJobs"></div>
+  </main>
 </div>
 
-<!-- BUG FIX: script.js must load BEFORE calling setupNavbar.
-     The DOMContentLoaded listener in script.js handles navbar init automatically. -->
 <script src="script.js"></script>
 <script>
-  function searchFromHome() {
-    const keyword  = document.getElementById('homeKeyword')?.value.trim() || '';
-    const location = document.getElementById('homeLocation')?.value.trim() || '';
-    const query    = new URLSearchParams();
-    if (keyword)  query.append('keyword', keyword);
-    if (location) query.append('location', location);
-    window.location.href = 'jobs.html' + (query.toString() ? `?${query}` : '');
+  buildSidebar('home');
+
+  function goSearch() {
+    const k=document.getElementById('homeKeyword').value.trim();
+    const l=document.getElementById('homeLocation').value.trim();
+    const q=new URLSearchParams();
+    if(k) q.append('keyword',k);
+    if(l) q.append('location',l);
+    location.href='jobs.html'+(q.toString()?'?'+q:'');
   }
-  window.addEventListener('load', loadHomeJobs);
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && document.activeElement?.closest('.hero-search-bar')) goSearch();
+  });
+
+  (async()=>{
+    const c=document.getElementById('homeJobs');
+    showSkeleton(c,6);
+    try {
+      const data=await apiFetch('/jobs').then(r=>r.json());
+      if(!data.length){c.innerHTML=empty('💼','No jobs yet — check back soon.');return;}
+      c.innerHTML=`<div class="grid-3">${data.slice(0,6).map(createJobCard).join('')}</div>`;
+    } catch(e){c.innerHTML=empty('⚠️','Start the backend to see live jobs.');}
+  })();
 </script>
 </body>
 </html>

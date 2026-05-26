@@ -7,62 +7,48 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<nav class="navbar">
-  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span><span></span><span></span>
-  </button>
-  <div class="navbar-links" id="navLinks"></div>
-</nav>
-
-<div class="container-wide">
-  <div class="top-strip">
-    <p>Search the latest jobs in Bangladesh and apply with a single click.</p>
-    <div class="top-strip-links">
-      <a href="login.html">Login</a>
-      <a href="register.html">Register</a>
+<div class="layout">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+        <div class="topbar-title">
+          <h1>Browse Jobs</h1>
+          <p>Find your next opportunity across Bangladesh</p>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <button class="btn-secondary btn-sm" onclick="loadJobs()">↺ Refresh</button>
+      </div>
     </div>
-  </div>
 
-  <div class="page-header dashboard-header">
-    <div>
-      <h2>Available Jobs</h2>
-      <p class="text-muted small-text">Find your next opportunity</p>
-    </div>
-    <button onclick="loadJobs()" class="btn-secondary">Refresh</button>
-  </div>
-
-  <div class="search-filter">
-    <div class="search-filter-grid">
-      <input type="text"   id="searchKeyword"   placeholder="Job title, company or keyword">
+    <div class="filter-bar">
+      <input type="text"   id="searchKeyword"   placeholder="Title, skill or company…">
       <input type="text"   id="filterLocation"  placeholder="Location">
-      <input type="number" id="filterMinSalary" placeholder="Min Salary">
-      <input type="number" id="filterMaxSalary" placeholder="Max Salary">
+      <input type="number" id="filterMinSalary" placeholder="Min salary (৳)">
+      <input type="number" id="filterMaxSalary" placeholder="Max salary (৳)">
+      <div class="filter-actions" style="grid-column:1/-1">
+        <button onclick="searchJobs()">Search</button>
+        <button class="btn-secondary" onclick="resetSearch()">Reset</button>
+      </div>
     </div>
-    <div class="search-filter-actions">
-      <button onclick="searchJobs()">Search</button>
-      <button onclick="resetJobSearch()" class="btn-secondary">Reset</button>
-    </div>
-  </div>
 
-  <div id="jobList">
-    <div class="loading-spinner"><div class="spinner"></div><p>Loading jobs…</p></div>
-  </div>
+    <div id="jobList"></div>
+  </main>
 </div>
-
 <script src="script.js"></script>
 <script>
-  window.addEventListener('load', () => {
-    const params = getQueryParams();
-    if (params.keyword)   document.getElementById('searchKeyword').value   = params.keyword;
-    if (params.location)  document.getElementById('filterLocation').value  = params.location;
-    if (params.minSalary) document.getElementById('filterMinSalary').value = params.minSalary;
-    if (params.maxSalary) document.getElementById('filterMaxSalary').value = params.maxSalary;
-    loadJobs(Object.values(params).some(Boolean) ? params : {});
+  buildSidebar('jobs');
+  window.addEventListener('load',()=>{
+    const p=getQueryParams();
+    if(p.keyword)   document.getElementById('searchKeyword').value=p.keyword;
+    if(p.location)  document.getElementById('filterLocation').value=p.location;
+    if(p.minSalary) document.getElementById('filterMinSalary').value=p.minSalary;
+    if(p.maxSalary) document.getElementById('filterMaxSalary').value=p.maxSalary;
+    loadJobs(Object.values(p).some(Boolean)?p:{});
   });
-  // Allow Enter key to search
-  document.addEventListener('keydown', e => { if (e.key === 'Enter') searchJobs(); });
+  document.addEventListener('keydown',e=>{if(e.key==='Enter'&&document.activeElement?.closest('.filter-bar'))searchJobs();});
 </script>
 </body>
 </html>

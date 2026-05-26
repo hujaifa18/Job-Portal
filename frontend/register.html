@@ -6,60 +6,38 @@
   <title>Register — JobPortal</title>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-
-<nav class="navbar">
-  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span><span></span><span></span>
-  </button>
-  <div class="navbar-links" id="navLinks"></div>
-</nav>
-
-<div class="container">
-  <div class="top-strip">
-    <p>Search the latest jobs in Bangladesh.</p>
-    <div class="top-strip-links">
-      <a href="login.html">Login</a>
-      <a href="register.html">Register</a>
+<body class="auth-page">
+<div class="auth-layout">
+  <div class="auth-sidebar" id="sidebar"></div>
+  <div class="auth-content">
+    <div class="auth-card">
+      <h2>Create Account</h2>
+      <p class="auth-sub">Join thousands of candidates and recruiters</p>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="name" placeholder="Your full name" autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label>Email Address</label>
+        <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="password" placeholder="Min. 6 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>I am a…</label>
+        <select id="role">
+          <option value="CANDIDATE">Job Candidate</option>
+          <option value="RECRUITER">Recruiter / Employer</option>
+        </select>
+      </div>
+      <button class="btn-full" onclick="register()">Create Account</button>
+      <div class="auth-footer">Have an account? <a href="login.html" class="auth-link">Sign in</a></div>
     </div>
   </div>
-
-  <div class="section-heading">
-    <h2>Create Account</h2>
-    <p class="text-muted small-text">Join thousands of candidates and recruiters</p>
-  </div>
-
-  <div class="form-group">
-    <label for="name">Full Name</label>
-    <input type="text" id="name" placeholder="John Doe" autocomplete="name">
-  </div>
-
-  <div class="form-group">
-    <label for="email">Email Address</label>
-    <input type="email" id="email" placeholder="you@example.com" autocomplete="email">
-  </div>
-
-  <div class="form-group">
-    <label for="password">Password</label>
-    <input type="password" id="password" placeholder="Minimum 6 characters" autocomplete="new-password">
-  </div>
-
-  <div class="form-group">
-    <label for="role">I am a…</label>
-    <select id="role">
-      <option value="CANDIDATE">Job Candidate</option>
-      <option value="RECRUITER">Recruiter / Employer</option>
-    </select>
-  </div>
-
-  <button onclick="register()" style="width:100%;margin-bottom:16px;">Create My Account</button>
-
-  <div class="text-center mt-20">
-    <p class="text-muted small-text">Already have an account? <a href="login.html" class="link-secondary">Login here</a></p>
-  </div>
 </div>
-
 <script src="script.js"></script>
+<script>buildSidebar('register');</script>
 </body>
 </html>

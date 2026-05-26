@@ -7,216 +7,87 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<nav class="navbar">
-  <div class="navbar-brand"><span class="dot"></span> JobPortal</div>
-  <button id="navbarToggle" class="navbar-toggle" aria-label="Open navigation">
-    <span></span>
-    <span></span>
-    <span></span>
-  </button>
-  <div class="navbar-links" id="navLinks"></div>
-</nav>
-
-<div class="container">
-  <div class="top-strip">
-    <p>Search the latest jobs in Bangladesh and apply with a single click.</p>
-    <div class="top-strip-links">
-      <a href="login.html">Login</a>
-      <a href="register.html">Register</a>
+<div class="layout">
+  <nav class="sidebar" id="sidebar"></nav>
+  <main class="main">
+    <div class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" id="mobileMenuBtn">☰</button>
+        <div class="topbar-title">
+          <h1>My Resume</h1>
+          <p>Upload and manage your CV files</p>
+        </div>
+      </div>
     </div>
-  </div>
-  <div class="section-heading">
-    <h2>My Resume</h2>
-    <p class="text-muted small-text">Upload and manage your resume files</p>
-  </div>
 
-  <div class="upload-box" id="uploadBox">
-    <div class="upload-icon">📤</div>
-    <p><strong>Click to upload or drag & drop your resume</strong></p>
-    <p class="text-muted small-text" style="margin-top:6px;">PDF files only · Max 5MB</p>
-    <input type="file" id="fileInput" class="file-input" accept=".pdf">
-  </div>
-
-  <div class="progress-bar" id="progressBar" style="display:none;">
-    <div class="progress-fill" id="progressFill"></div>
-  </div>
-
-  <div id="message" style="display:none;"></div>
-
-  <div class="file-list">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
-      <h3>Your Resumes</h3>
-      <button onclick="loadResumes()" class="btn-secondary btn-sm">Refresh</button>
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-zone-icon">📤</div>
+      <p style="font-weight:600;margin-bottom:4px;color:var(--t1)">Click to upload or drag & drop</p>
+      <p class="text-sm text-muted">PDF files only · Max 5MB</p>
+      <input type="file" id="fileInput" accept=".pdf" style="display:none">
     </div>
-    <div id="resumeList" class="resume-list"></div>
-  </div>
 
-  <div class="divider"></div>
-  <a href="jobs.html" class="nav-button">Back to Jobs</a>
+    <div class="section-head">
+      <div><h2>Uploaded Resumes</h2></div>
+      <button class="btn-secondary btn-sm" onclick="loadResumes()">↺ Refresh</button>
+    </div>
+    <div id="resumeList"></div>
+  </main>
 </div>
-
-<script>
-  // Nav setup
-  const _email = sessionStorage.getItem('email');
-  const _role  = sessionStorage.getItem('role');
-  const nav    = document.getElementById('navLinks');
-  if (_email && _role) {
-    const dest = _role === 'RECRUITER' ? 'recruiter-dashboard.html' : 'candidate-dashboard.html';
-    nav.innerHTML = `
-      <a href="index.html">Home</a>
-      <a href="${dest}">Dashboard</a>
-      <span class="text-muted small-text">${_email}</span>
-      <button class="logout-btn" onclick="sessionStorage.clear();window.location.href='login.html';">Logout</button>`;
-  }
-
-  const uploadBox    = document.getElementById('uploadBox');
-  const fileInput    = document.getElementById('fileInput');
-  const progressBar  = document.getElementById('progressBar');
-  const progressFill = document.getElementById('progressFill');
-  const messageEl    = document.getElementById('message');
-
-  uploadBox.addEventListener('click', () => fileInput.click());
-  uploadBox.addEventListener('dragover', e => { e.preventDefault(); uploadBox.classList.add('dragover'); });
-  uploadBox.addEventListener('dragleave', () => uploadBox.classList.remove('dragover'));
-  uploadBox.addEventListener('drop', e => {
-    e.preventDefault();
-    uploadBox.classList.remove('dragover');
-    if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; uploadResume(); }
-  });
-  fileInput.addEventListener('change', uploadResume);
-
-  function uploadResume() {
-    const file = fileInput.files[0];
-    if (!file) return;
-    if (!file.name.toLowerCase().endsWith('.pdf')) { showMessage('Please upload a PDF file only.', 'error'); return; }
-    if (file.size > 5 * 1024 * 1024) { showMessage('File size must be less than 5MB.', 'error'); return; }
-
-    const email = sessionStorage.getItem('email');
-    if (!email) { showMessage('Please login first.', 'error'); return; }
-
-    const formData = new FormData();
-    formData.append('email', email);
-    formData.append('file', file);
-
-    progressBar.style.display = 'block';
-    progressFill.style.width = '40%';
-
-    apiFetch('/upload-resume', { method: 'POST', body: formData })
-    .then(res => res.json())
-    .then(data => {
-      progressFill.style.width = '100%';
-      setTimeout(() => {
-        progressBar.style.display = 'none';
-        progressFill.style.width = '0%';
-        if (data && data.message) {
-          showMessage(data.message, 'success');
-          fileInput.value = '';
-          loadResumes();
-        } else if (data && data.error) {
-          showMessage(data.error, 'error');
-        } else {
-          showMessage('Resume upload failed.', 'error');
-        }
-      }, 500);
-    })
-    .catch(err => {
-      progressBar.style.display = 'none';
-      showMessage('Error uploading: ' + err.message, 'error');
-    });
-  }
-
-  function loadResumes() {
-    const email = sessionStorage.getItem('email');
-    if (!email) { showMessage('Please login first to view resumes.', 'error'); return; }
-    apiFetch(`/resumes?email=${encodeURIComponent(email)}`)
-    .then(res => res.json())
-    .then(data => {
-      if (!data.length) {
-        document.getElementById('resumeList').innerHTML =
-          `<div class="empty-state"><div class="empty-icon">📄</div><p>No resumes uploaded yet.</p></div>`;
-        return;
-      }
-      document.getElementById('resumeList').innerHTML = data.map(resume => {
-        const primaryBadge = resume.isPrimary ? '<span class="primary-badge">Primary</span>' : '';
-        const setPrimaryBtn = !resume.isPrimary
-          ? `<button class="btn-ghost btn-sm" onclick="setAsDefault(${resume.id})">Set as Primary</button>`
-          : '';
-        return `
-          <div class="file-item">
-            <div class="file-info">
-              <div class="file-name">📄 ${resume.fileName} ${primaryBadge}</div>
-              <div class="file-size">${(resume.fileSize / 1024).toFixed(2)} KB &middot; Uploaded ${new Date(resume.uploadedAt).toLocaleDateString()}</div>
-            </div>
-            <div class="file-actions">
-              <button class="btn-secondary btn-sm" onclick="downloadResume(${resume.id})">Download</button>
-              ${setPrimaryBtn}
-              <button class="btn-danger btn-sm" onclick="deleteResume(${resume.id})">Delete</button>
-            </div>
-          </div>`;
-      }).join('');
-    })
-    .catch(() => {
-      document.getElementById('resumeList').innerHTML = '<p style="color:#fca5a5;">Error loading resumes.</p>';
-    });
-  }
-
-  function setAsDefault(resumeId) {
-    const email = sessionStorage.getItem('email');
-    apiFetch('/set-primary-resume', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data && data.message) {
-        showMessage('Primary resume updated!', 'success');
-        loadResumes();
-      } else if (data && data.error) {
-        showMessage(data.error, 'error');
-      } else {
-        showMessage('Failed to update primary resume.', 'error');
-      }
-    })
-    .catch(err => showMessage('Error: ' + err.message, 'error'));
-  }
-
-  function downloadResume(resumeId) {
-    apiUrl(`/download-resume?id=${resumeId}`).then(url => window.open(url, '_blank'));
-  }
-
-  function deleteResume(resumeId) {
-    if (!confirm('Delete this resume?')) return;
-    const email = sessionStorage.getItem('email');
-    apiFetch('/delete-resume', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `resumeId=${resumeId}&email=${encodeURIComponent(email)}`
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data && data.message) {
-        showMessage('Resume deleted.', 'success');
-        loadResumes();
-      } else if (data && data.error) {
-        showMessage(data.error, 'error');
-      } else {
-        showMessage('Failed to delete resume.', 'error');
-      }
-    })
-    .catch(err => showMessage('Error: ' + err.message, 'error'));
-  }
-
-  function showMessage(text, type) {
-    messageEl.textContent = text;
-    messageEl.className = 'alert alert-' + (type === 'error' ? 'error' : 'success');
-    messageEl.style.display = 'flex';
-    setTimeout(() => { messageEl.style.display = 'none'; }, 4000);
-  }
-
-  window.addEventListener('load', () => { setupNavbar(); if (sessionStorage.getItem('email')) loadResumes(); });
-</script>
 <script src="script.js"></script>
+<script>
+  buildSidebar('resume');
+  const _u=getUser();
+  if(!_u.email||_u.role!=='CANDIDATE') location.href='login.html';
+
+  document.addEventListener('DOMContentLoaded',loadResumes);
+
+  const zone=document.getElementById('uploadZone');
+  const inp =document.getElementById('fileInput');
+  inp.addEventListener('change',()=>{if(inp.files[0])doUpload(inp.files[0]);});
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.style.borderColor='var(--gold)';});
+  zone.addEventListener('dragleave',()=>zone.style.borderColor='');
+  zone.addEventListener('drop',e=>{e.preventDefault();zone.style.borderColor='';if(e.dataTransfer.files[0])doUpload(e.dataTransfer.files[0]);});
+
+  function doUpload(file){
+    if(!file.name.toLowerCase().endsWith('.pdf')) return toast('PDF files only.','error');
+    if(file.size>5*1024*1024) return toast('Max file size is 5MB.','error');
+    const fd=new FormData(); fd.append('email',_u.email); fd.append('file',file);
+    apiFetch('/upload-resume',{method:'POST',body:fd}).then(parseResp)
+      .then(d=>{toast(d?.message||d?.error||'Upload failed.',d?.message?'success':'error');if(d?.message){inp.value='';loadResumes();}})
+      .catch(()=>toast('Upload failed.','error'));
+  }
+
+  function loadResumes(){
+    const c=document.getElementById('resumeList');
+    showLoading(c);
+    apiFetch(`/resumes?email=${enc(_u.email)}`).then(parseResp).then(data=>{
+      if(!data.length){c.innerHTML=empty('📄','No resumes uploaded yet.');return;}
+      c.innerHTML=data.map(r=>`
+        <div class="resume-row">
+          <div class="resume-icon">📄</div>
+          <div class="resume-info">
+            <h3>${esc(r.fileName)} ${r.isPrimary?'<span class="badge badge-gold">Primary</span>':''}</h3>
+            <p>${(r.fileSize/1024).toFixed(1)} KB · Uploaded ${new Date(r.uploadedAt).toLocaleDateString()}</p>
+          </div>
+          <div class="resume-actions">
+            <button class="btn-secondary btn-sm" onclick="apiUrl('/download-resume?id=${r.id}').then(u=>window.open(u,'_blank'))">Download</button>
+            ${!r.isPrimary?`<button class="btn-ghost btn-sm" onclick="setPrimary(${r.id})">Set Primary</button>`:''}
+            <button class="btn-danger btn-sm" onclick="delResume(${r.id})">Delete</button>
+          </div>
+        </div>`).join('');
+    }).catch(()=>{c.innerHTML=empty('⚠️','Error loading resumes.');});
+  }
+
+  function setPrimary(id){
+    apiFetch('/set-primary-resume',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`resumeId=${id}&email=${enc(_u.email)}`})
+      .then(parseResp).then(d=>{if(d?.message)loadResumes();else toast(d?.error||'Failed.','error');}).catch(()=>toast('Failed.','error'));
+  }
+  function delResume(id){
+    if(!confirm('Delete this resume?'))return;
+    apiFetch('/delete-resume',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:`resumeId=${id}&email=${enc(_u.email)}`})
+      .then(parseResp).then(d=>{if(d?.message)loadResumes();else toast(d?.error||'Failed.','error');}).catch(()=>toast('Failed.','error'));
+  }
+</script>
 </body>
 </html>
