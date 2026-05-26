@@ -24,7 +24,7 @@ Neural Navigator provides:
 - Md. Rakibul Islam
 - Fatima Rahman Shoshi
 
-**University**: Department of Computer Science and Engineering, Khwaja Yunus Ali University
+**From**: Department of Computer Science and Engineering, Khwaja Yunus Ali University
 
 ---
 
