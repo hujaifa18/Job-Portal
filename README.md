@@ -1,270 +1,166 @@
-# 🎯 Job Portal - Complete Job Management System
+# Neural Navigator — Job Portal
 
-A full-stack web application that connects job seekers with recruiters, featuring job listings, applications, resume management, and role-based dashboards.
+A professional job portal built as a team project by Neural Navigator for Khwaja Yunus Ali University.
+
+This repository delivers a complete full-stack solution that enables recruiters to publish jobs and candidates to search, apply, and manage resumes in a centralized platform.
+
+---
+
+## 🚀 Project Summary
+
+Neural Navigator provides:
+- A recruiter-facing workflow for posting jobs and reviewing applicants
+- A candidate-facing experience for browsing jobs, submitting applications, and managing resumes
+- Role-based access control for recruiters and candidates
+- A Java backend paired with a responsive HTML/CSS/JavaScript frontend
+
+---
+
+## 👥 Team
+
+**Neural Navigator**
+- Abid Hasan Hujaifa
+- Md. Rabbi
+- Md. Rakibul Islam
+- Fatima Rahman Shoshi
+
+**University**: Department of Computer Science and Engineering, Khwaja Yunus Ali University
 
 ---
 
 ## ✨ Features
 
-### For Candidates
-- 🔍 **Search & Filter Jobs** - Find jobs by title, location, and salary range
-- 📋 **Job Applications** - Apply for jobs and track application status
-- 📄 **Resume Management** - Upload, download, and manage multiple resumes
-- 👤 **Candidate Dashboard** - Central hub for all job-related activities
-- ✅ **Application Tracking** - View all applications with status (Pending/Accepted/Rejected)
+### Candidate features
+- Search and filter job listings
+- Submit and track job applications
+- Upload and manage resume documents
+- Candidate dashboard for application overview
 
-### For Recruiters
-- ➕ **Post Jobs** - Create and manage job listings with detailed descriptions
-- 👥 **View Applicants** - See all candidates who applied for posted jobs
-- 📊 **Recruiter Dashboard** - Overview of posted jobs and applicants
-- 🎯 **Manage Job Postings** - Edit, view, and delete job listings
+### Recruiter features
+- Post new job opportunities
+- View and manage applicant details
+- Recruiter dashboard for job and application tracking
 
-### General
-- 🔐 **User Authentication** - Register and login with role-based access
-- 📱 **Responsive Design** - Works seamlessly on desktop and mobile
-- ⚡ **Fast Performance** - Optimized database queries with indexing
-- 🎨 **Modern UI** - Beautiful gradient design with smooth interactions
+### Common features
+- User registration and login
+- Role-based dashboard access
+- Resume upload and file handling
+- Database-backed persistence with MySQL
 
 ---
 
-## 🏗️ Project Architecture
+## 🏗️ Repository Structure
 
 ```
 Job Portal/
-├── backend/
-│   ├── src/
-│   │   ├── dao/              # Database Access Objects
-│   │   │   ├── UserDAO.java
-│   │   │   ├── JobDAO.java
-│   │   │   ├── ApplicationDAO.java
-│   │   │   └── ResumesDAO.java
-│   │   ├── model/             # Data Models
-│   │   │   ├── User.java
-│   │   │   ├── Job.java
-│   │   │   └── Application.java
-│   │   ├── service/           # Business Logic
-│   │   │   ├── UserService.java
-│   │   │   ├── JobService.java
-│   │   │   └── ApplicationService.java
-│   │   ├── server/            # HTTP Server
-│   │   │   └── Server.java (Custom HttpServer, Port 8080)
-│   │   └── util/              # Utilities
-│   │       └── DBConnection.java
-│   └── lib/                   # Libraries
-├── frontend/
-│   ├── index.html             # Home page
-│   ├── login.html             # Login page
-│   ├── register.html          # Registration page
-│   ├── candidate-dashboard.html # Candidate dashboard
-│   ├── recruiter-dashboard.html # Recruiter dashboard
-│   ├── jobs.html              # Job listings (legacy)
-│   ├── postJob.html           # Post job form (legacy)
-│   ├── applicants.html        # Applicants view (legacy)
-│   ├── resume.html            # Resume management (legacy)
-│   ├── script.js              # JavaScript functions & API calls
-│   └── style.css              # CSS styling
-└── database_schema.sql        # MySQL database schema
+├── backend/                    # Java server, models, DAO, services, utilities
+│   ├── bin/
+│   ├── dao/
+│   ├── model/
+│   ├── server/
+│   ├── service/
+│   └── util/
+├── frontend/                   # Client pages, stylesheet, and script
+│   ├── index.html
+│   ├── login.html
+│   ├── register.html
+│   ├── candidate-dashboard.html
+│   ├── recruiter-dashboard.html
+│   ├── script.js
+│   └── style.css
+├── uploads/                    # Uploaded resume files
+├── xampp_database_schema.sql   # MySQL database schema
+├── RUN_BACKEND.bat             # Start backend server script
+├── compile_backend.py          # Backend compile helper script
+├── DebugDB.java                # Debug class
+└── docs/                       # Project documentation
+    └── PROJECT_OVERVIEW.md
 ```
 
 ---
 
-## 🚀 Tech Stack
+## 🛠️ Technology Stack
 
-### Backend
-- **Language**: Java
-- **Server**: Built-in Java HttpServer (com.sun.net.httpserver)
+- **Backend**: Java
+- **Frontend**: HTML, CSS, JavaScript
 - **Database**: MySQL
-- **Architecture**: DAO Pattern with Service Layer
-
-### Frontend
-- **HTML5** - Semantic markup
-- **CSS3** - Responsive design with gradients
-- **Vanilla JavaScript** - Fetch API for HTTP requests
-- **Session Storage** - Client-side session management
-
-### Database
-- **MySQL** with 4 main tables:
-  - `users` - User accounts and roles
-  - `jobs` - Job listings
-  - `applications` - Job applications
-  - `resumes` - Resume files
+- **Architecture**: DAO + Service Layer
+- **Server**: Java HttpServer-based backend
 
 ---
 
-## 📋 Database Schema
-
-### Users Table
-```sql
-id, name, email (UNIQUE), password, role (CANDIDATE/RECRUITER), created_at
-```
-
-### Jobs Table
-```sql
-id, title, description, salary, location, company_name, recruiter_email (FK),
-status (ACTIVE/CLOSED/DRAFT), created_at, updated_at
-```
-
-### Applications Table
-```sql
-id, job_id (FK), candidate_email (FK), status (PENDING/ACCEPTED/REJECTED/WITHDRAWN),
-applied_at, updated_at, UNIQUE(job_id, candidate_email)
-```
-
-### Resumes Table
-```sql
-id, candidate_email (FK), file_name, file_path, file_size, uploaded_at, is_primary
-```
-
----
-
-## 🔧 Setup Instructions
+## 📥 Setup Instructions
 
 ### Prerequisites
-- **Java 8** or higher
-- **XAMPP** with MySQL (or standalone MySQL)
-- Text editor or IDE
+- Java 8 or later
+- MySQL database (XAMPP recommended)
+- Browser for frontend pages
 
-### 1️⃣ Database Setup (phpMyAdmin)
+### Step 1: Create the Database
 
-**Option A: Using phpMyAdmin (Easiest)**
+Import `xampp_database_schema.sql` into MySQL using one of the following methods:
 
-1. Open XAMPP Control Panel → Start MySQL
-2. Go to `http://localhost/phpmyadmin` in browser
-3. Click **Import** tab
-4. Select **Choose File** → browse to `xampp_database_schema.sql`
-5. Click **Go** to execute
-6. ✅ Tables created: `users`, `jobs`, `applications`, `resumes`
+**Using phpMyAdmin**
+1. Start MySQL in XAMPP.
+2. Open `http://localhost/phpmyadmin`.
+3. Choose the `Import` tab.
+4. Select `xampp_database_schema.sql`.
+5. Click `Go`.
 
-**Option B: Using Command Line**
-
+**Using MySQL CLI**
 ```powershell
 cd "e:\Job Portal"
 mysql -u root < xampp_database_schema.sql
 ```
 
-**Option C: Using MySQL Workbench**
-
-1. Open MySQL Workbench
-2. File → Open SQL Script → Select `xampp_database_schema.sql`
-3. Execute (⚡ button)
-4. Verify: `USE jobportal_db; SHOW TABLES;`
-
 ---
 
-### 2️⃣ Backend Setup & Run
+### Step 2: Start the Backend
+
+Run the backend server:
 
 ```powershell
-# Navigate to project folder
 cd "e:\Job Portal"
-
-# Run the backend server
 .\RUN_BACKEND.bat
-
-# Expected output:
-# ✅ Database Connected
-# ✅ Server running at http://localhost:8080
 ```
 
-**Keep the terminal open while developing!**
+The backend should start and connect to the database.
 
 ---
 
-### 3️⃣ Frontend Access
+### Step 3: Open the Frontend
 
-1. Open browser
-2. Navigate to: `file:///e:/Job Portal/frontend/index.html`
-3. Or serve with Python:
+Open the frontend pages directly by launching `frontend/index.html` in your browser.
+
+For a local server:
+
 ```powershell
-cd frontend
+cd "e:\Job Portal\frontend"
 python -m http.server 8000
-# Then visit: http://localhost:8000
 ```
-```
-
-### 3. Frontend Setup
-```bash
-# Open frontend files in a web browser
-# Navigate to index.html
-
-# Or use a simple HTTP server
-cd frontend
-python -m http.server 3000
-# Then visit http://localhost:3000
-```
+Then visit `http://localhost:8000`.
 
 ---
 
-## 📱 API Endpoints
+## 📄 Notes
 
-### Authentication
-| Method | Endpoint | Body | Response |
-|--------|----------|------|----------|
-| POST | `/register` | name, email, password, role | "Registered Successfully" / "Failed" |
-| POST | `/login` | email, password | role (RECRUITER/CANDIDATE) / "Invalid" |
-
-### Jobs
-| Method | Endpoint | Query/Body | Response |
-|--------|----------|-----------|----------|
-| POST | `/postjob` | title, description, salary, location, company, email | "Job Posted" / "Failed" |
-| GET | `/jobs` | - | JSON array of all jobs |
-| GET | `/search` | keyword, location, minSalary, maxSalary | JSON array of filtered jobs |
-| GET | `/recruiter-jobs` | email | JSON array of recruiter's jobs |
-
-### Applications
-| Method | Endpoint | Query/Body | Response |
-|--------|----------|-----------|----------|
-| POST | `/apply` | jobId, email | "Applied Successfully" / "Failed" |
-| GET | `/applicants` | - | JSON array of all applications |
-| GET | `/my-applications` | email | JSON array of candidate's applications |
-
-### Resume Management
-| Method | Endpoint | Query/Body | Response |
-|--------|----------|-----------|----------|
-| POST | `/upload-resume` | email, file | "Resume uploaded successfully" |
-| GET | `/resumes` | email | JSON array of candidate's resumes |
-| GET | `/download-resume` | id | File download |
-| POST | `/set-primary-resume` | resumeId, email | "Primary resume set" |
+- `frontend/` contains the user interface pages and assets.
+- `backend/` contains Java source code with DAO, model, service, and server layers.
+- `uploads/` stores user resume files.
+- `docs/PROJECT_OVERVIEW.md` provides a repository-level summary.
 
 ---
 
-## 👥 User Roles & Access
+## 📚 Documentation
 
-### Candidate
-- View all active jobs
-- Search and filter jobs
-- Apply for jobs
-- Track application status
-- Upload and manage resumes
-- View personal dashboard
-
-### Recruiter
-- Post job listings
-- View applicants for their jobs
-- Manage job postings
-- View recruiter dashboard
-- Access job statistics
+Additional documentation is available in the `docs/` folder.
 
 ---
 
-## 🔐 Security Features
+## 🙌 Contribution
 
-✅ Prepared Statements (SQL Injection Prevention)
-✅ Password Storage (Hashed - recommended upgrade)
-✅ Email Validation
-✅ Form Input Validation
-✅ CORS Headers
-✅ Session Management
-✅ Foreign Key Constraints
-✅ Unique Constraints
+This project was developed by the Neural Navigator team as an academic project. Feel free to review the code, test the flows, and propose improvements through the repository.
 
----
-
-## 📝 Usage Examples
-
-### As a Candidate
-1. **Register** → Register as "Job Candidate"
-2. **Login** → Automatically redirected to Candidate Dashboard
-3. **Find Jobs** → Search and filter jobs by title, location, salary
 4. **Apply** → Click "Apply Now" on any job
 5. **Track** → View all applications in "My Applications" tab
 6. **Resume** → Upload and manage resumes in "My Resume" tab

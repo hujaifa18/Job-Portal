@@ -1,1 +1,0 @@
-" "E:\Job Portal\backend\src\util\DBConnection.java  ; if exist backend\bin rmdir /s /q backend\bin ; mkdir backend\bin ; javac -verbose -d backend\bin -sourcepath backend\src @sources.txt  ; type compile.log

@@ -1,0 +1,18 @@
+# Build artifacts
+backend/bin/
+*.class
+*.log
+
+# Local runtime files
+uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Python server files
+*.pyc
+__pycache__/
+
+# IDE files
+.vscode/
